@@ -89,11 +89,14 @@ void* list_get_i(list_t* self, int index) {
     return NULL;
 }
 
-void list_free(list_t* self) {
+void list_free(list_t* self, void (*free_content)(void*)) {
     item_t* item;
 
-    ITER_LIST(item, self)
+    ITER_LIST(item, self) {
+        if (free_content)
+            free_content(item->content);
         free(item);
+    }
 
     free(self);
 }

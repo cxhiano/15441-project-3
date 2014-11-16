@@ -19,7 +19,7 @@ struct list_s {
     int (*remove_i)(list_t* self, int index);
     void* (*get_c)(list_t* self, int (*condition)(void*));
     void* (*get_i)(list_t* self, int index);
-    void (*free)(list_t* self);
+    void (*free)(list_t* self, void (*free_content)(void*));
 };
 
 
@@ -30,6 +30,6 @@ int list_remove_c(list_t*, int (void*));
 int list_remove_i(list_t*, int);
 void* list_get_c(list_t*, int (void*));
 void* list_get_i(list_t*, int);
-void list_free(list_t*);
+void list_free(list_t*, void (void*));
 
 #endif
