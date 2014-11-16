@@ -83,15 +83,24 @@ static sockaddr_in_t make_sockaddr_in(char* ip, int port) {
 }
 
 int req_connect_server(request_t* self) {
-    sockaddr_in_t serveraddr;
+    sockaddr_in_t serveraddr, clientaddr;
 
     if ((self->server_fd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+        log_error("req_connect_server: socket() failed");
         return -1;
+
+    clientaddr = make_sockaddr_in(fake_ip, listen_port);
+    if (bind(self->server_fd, (struct sockaddr *)&clientaddr,
+            sizeof(clientaddr))) {
+        log_error("req_connect_server: Failed binding socket");
+        return -1;
+    }
 
     serveraddr = make_sockaddr_in(www_ip, self->uri.port);
 
     if (connect(self->server_fd, (struct sockaddr *) &serveraddr,
             sizeof(serveraddr)) < 0)
+        log_error("req_connect_server: connect() failed");
         return -1;
     return 0;
 }
