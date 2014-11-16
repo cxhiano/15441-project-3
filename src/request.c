@@ -29,7 +29,7 @@ static int parse_uri(char* str, uri_t *uri)
     int prot_len;       //The length of "http://"
 
     if (str[0] == '/') {
-        uri->host = "localhost";
+        strcpy(uri->host, "localhost");
         strcpy(uri->path, uri);
     } else {
         prot_len = strlen("http://");
