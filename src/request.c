@@ -94,7 +94,7 @@ int req_connect_server(request_t* self) {
         return -1;
     }
 
-    clientaddr = make_sockaddr_in(fake_ip, listen_port);
+    clientaddr = make_sockaddr_in(fake_ip, 0);
     if (bind(self->server_fd, (struct sockaddr *)&clientaddr,
             sizeof(clientaddr))) {
         log_error("req_connect_server: Failed binding socket");

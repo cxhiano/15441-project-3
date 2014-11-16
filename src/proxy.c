@@ -18,9 +18,10 @@ int main(int argc, char* argv[]) {
     alpha = atof(argv[2]);
     listen_port = atoi(argv[3]);
     fake_ip = argv[4];
-    dns_port = atoi(argv[5]);
-    if (argc == 7)
-        www_ip = argv[6];
+    dns_ip = argv[5];
+    dns_port = atoi(argv[6]);
+    if (argc == 8)
+        www_ip = argv[7];
 
     serve(listen_port);
 
