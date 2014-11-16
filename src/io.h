@@ -30,4 +30,7 @@ void add_write_fd(int fd);
 void remove_write_fd(int fd);
 int test_write_fd(int fd);
 
+
+int io_readline(int fd, char* buf, int bufsize);
+
 #endif

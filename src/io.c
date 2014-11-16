@@ -63,3 +63,27 @@ int io_select() {
     return select(context.fd_max + 1, &context.read_fds, &context.write_fds,
         NULL, NULL);
 }
+
+int io_readline(int fd, char* buf, int bufsize) {
+    int i, ret;
+    char c;
+
+    for (i = 0; i < bufsize; ++i) {
+        ret = read(fd, &c, 1);
+        if (ret == 1) {
+            buf[i] = c;
+            if (c == '\n')
+                return i + 1;
+        } else if (ret == 0) {
+            return i;
+        } else if (ret == -1) {
+            if (errno != EAGAIN && errno != EWOULDBLOCK) {
+                log_error("io_readline: read error");
+                return -1;
+            }
+            return i;
+        }
+    }
+
+    return bufsize;
+}

@@ -80,13 +80,21 @@ void serve(unsigned short port) {
             }
             //Add socket to fd list
             add_read_fd(client_fd);
-            add_write_fd(client_fd);
+            req = create_request(client_fd);
+            request_list->add(request_list, req);
         }
 
         ITER_LIST(item, request_list) {
             req = item->content;
-
+            if (test_read_fd(req->client_fd)) {
+                if (req->server_fd == -1) {
+                    io_readline(req->client_fd, req->buf, REQ_BUF_SIZE);
+                    if (req->parse(req) == 0)
+                        req->connect_server(req);
+                } else {
+                    req->forward(req);
+                }
+            }
         }
     }
-
 }
