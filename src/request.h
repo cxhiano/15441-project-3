@@ -26,13 +26,16 @@ struct request_s {
 
     int (*connect_server)(request_t* self);
 
-    int (*forward)(request_t* self);
+    int (*forward)(request_t* self, int from_fd, int to_fd);
+
+    void (*finalize)(request_t* self);
 };
 
 request_t* create_request();
 
 int req_parse(request_t*);
 int req_connect_server(request_t*);
-int req_forward(request_t*);
+int req_forward(request_t*, int, int);
+void req_finalize(request_t*);
 
 #endif

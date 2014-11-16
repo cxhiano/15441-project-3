@@ -4,6 +4,7 @@
 #include <netinet/ip.h>
 #include <string.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include "log.h"
 #include "request.h"
 #include "config.h"
@@ -17,6 +18,7 @@ request_t* create_request(int client_fd) {
     request->parse = req_parse;
     request->connect_server = req_connect_server;
     request->forward = req_forward;
+    request->finalize = req_finalize;
 
     return request;
 }
@@ -94,6 +96,26 @@ int req_connect_server(request_t* self) {
     return 0;
 }
 
-int req_forward(request_t* self) {
-    return 0;
+int req_forward(request_t* self, int from_fd, int to_fd) {
+    int nbytes;
+
+    nbytes = read(from_fd, self->buf, REQ_BUF_SIZE);
+
+    if (nbytes == -1) {
+        log_error("req_forward: read error");
+        return -1;
+    }
+
+    if (write(to_fd, self->buf, nbytes) == -1) {
+        log_error("req_forward: write error");
+        return -1;
+    }
+
+    return nbytes;
+}
+
+void req_finalize(request_t* self) {
+    close(self->client_fd);
+    if (self->server_fd)
+        close(self->server_fd);
 }

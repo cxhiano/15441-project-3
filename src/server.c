@@ -49,6 +49,8 @@ static int setup_server_socket(unsigned short port) {
 
 void serve(unsigned short port) {
     int listen_fd, client_fd;
+    int nbytes, i;
+    int end;
     socklen_t client_addr_len;
     struct sockaddr_in client_addr;
     list_t* request_list;
@@ -84,17 +86,41 @@ void serve(unsigned short port) {
             request_list->add(request_list, req);
         }
 
-        ITER_LIST(item, request_list) {
+        item = request_list->head;
+        for (i = 0; item; ++i) {
+            end = 0;
             req = item->content;
             if (test_read_fd(req->client_fd)) {
                 if (req->server_fd == -1) {
-                    io_readline(req->client_fd, req->buf, REQ_BUF_SIZE);
-                    if (req->parse(req) == 0)
-                        req->connect_server(req);
+                    nbytes = io_readline(req->client_fd, req->buf, REQ_BUF_SIZE);
+
+                    if (nbytes == -1) end = 1;
+
+                    if (req->parse(req) == 0) {
+                        if (req->connect_server(req) == 0) {
+                            add_read_fd(req->server_fd);
+                            write(req->server_fd, req->buf, nbytes);
+                        } else
+                            end = 1;
+                    } else
+                        end = 1;
                 } else {
-                    req->forward(req);
+                    if (req->forward(req, req->client_fd, req->server_fd) <= 0)
+                        end = 1;
                 }
             }
+
+            if (req->server_fd != -1 && test_read_fd(req->server_fd)) {
+                if (req->forward(req, req->server_fd, req->client_fd) <= 0)
+                    end = 1;
+            }
+
+            item = item->next;
+            if (end) {
+                req->finalize(req);
+                request_list->remove_i(request_list, i);
+            }
+
         }
     }
 }
