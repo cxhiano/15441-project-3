@@ -117,6 +117,9 @@ void serve(unsigned short port) {
 
             item = item->next;
             if (end) {
+                remove_read_fd(req->client_fd);
+                if (req->server_fd != -1)
+                    remove_read_fd(req->server_fd);
                 req->finalize(req);
                 request_list->remove_i(request_list, i);
             }
