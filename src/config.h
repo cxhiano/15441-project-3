@@ -1,6 +1,8 @@
 #ifndef __CONFIG_H__
 #define __CONFIG_H__
 
+#define SERVER_PORT 8080
+
 char* log_path;
 float alpha;
 int listen_port;

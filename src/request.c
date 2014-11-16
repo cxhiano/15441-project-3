@@ -101,7 +101,7 @@ int req_connect_server(request_t* self) {
         return -1;
     }
 
-    serveraddr = make_sockaddr_in(www_ip, self->uri.port);
+    serveraddr = make_sockaddr_in(www_ip, SERVER_PORT);
 
     if (connect(self->server_fd, (struct sockaddr *) &serveraddr,
             sizeof(serveraddr)) < 0) {
