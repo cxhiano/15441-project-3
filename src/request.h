@@ -7,6 +7,8 @@
 #define S_HEADERS 1
 #define S_REQ_END 2
 
+typedef struct sockaddr_in sockaddr_in_t;
+
 typedef struct {
     char host[REQ_BUF_SIZE], path[REQ_BUF_SIZE];
     int port;

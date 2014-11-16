@@ -1,7 +1,12 @@
+#include <arpa/inet.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <netinet/ip.h>
 #include <string.h>
 #include <stdlib.h>
 #include "log.h"
 #include "request.h"
+#include "config.h"
 
 request_t* create_request(int client_fd) {
     request_t* request = malloc(sizeof(request_t));
@@ -10,7 +15,7 @@ request_t* create_request(int client_fd) {
     request->server_fd = -1;
 
     request->parse = req_parse;
-    request->conenct_server = req_connect_server;
+    request->connect_server = req_connect_server;
     request->forward = req_forward;
 
     return request;
@@ -64,10 +69,31 @@ int req_parse(request_t* self) {
     return 0;
 }
 
-int req_connect_server(request_t* self) {
+static sockaddr_in_t make_sockaddr_in(char* ip, int port) {
+    sockaddr_in_t addr;
 
+    bzero((char *) &addr, sizeof(addr));
+    addr.sin_family = AF_INET;
+    inet_pton(AF_INET, ip, &(addr.sin_addr));
+    addr.sin_port = htons(port);
+
+    return addr;
+}
+
+int req_connect_server(request_t* self) {
+    sockaddr_in_t serveraddr;
+
+    if ((self->server_fd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+        return -1;
+
+    serveraddr = make_sockaddr_in(www_ip, self->uri.port);
+
+    if (connect(self->server_fd, (struct sockaddr *) &serveraddr,
+            sizeof(serveraddr)) < 0)
+        return -1;
+    return 0;
 }
 
 int req_forward(request_t* self) {
-
+    return 0;
 }
