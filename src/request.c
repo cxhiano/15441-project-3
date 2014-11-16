@@ -28,20 +28,24 @@ static int parse_uri(char* str, uri_t *uri)
     char *host_start, *path_start, *port_start;
     int prot_len;       //The length of "http://"
 
-    prot_len = strlen("http://");
+    if (str[0] == '/') {
+        uri->host = "localhost";
+        strcpy(uri->path, uri);
+    } else {
+        prot_len = strlen("http://");
+        if (strstr(str, "http://") == NULL || strlen(str) <= prot_len)
+            return -1;
 
-    if (strstr(str, "http://") == NULL || strlen(str) <= prot_len)
-        return -1;
-
-    host_start = str + prot_len;
-    path_start = strchr(host_start, '/');
-    if (path_start == NULL) {
-        strcpy(uri->path, "/");
-        strcpy(uri->host, host_start);
-    }
-    else {
-        strcpy(uri->path, path_start);
-        strncpy(uri->host, host_start, path_start - host_start);
+        host_start = str + prot_len;
+        path_start = strchr(host_start, '/');
+        if (path_start == NULL) {
+            strcpy(uri->path, "/");
+            strcpy(uri->host, host_start);
+        }
+        else {
+            strcpy(uri->path, path_start);
+            strncpy(uri->host, host_start, path_start - host_start);
+        }
     }
 
     port_start = strchr(uri->host, ':');
