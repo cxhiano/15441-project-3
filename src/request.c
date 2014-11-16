@@ -30,7 +30,7 @@ static int parse_uri(char* str, uri_t *uri)
 
     if (str[0] == '/') {
         strcpy(uri->host, "localhost");
-        strcpy(uri->path, uri);
+        strcpy(uri->path, str);
     } else {
         prot_len = strlen("http://");
         if (strstr(str, "http://") == NULL || strlen(str) <= prot_len)
