@@ -1,3 +1,5 @@
 *.o
 *.g
 bitrate-project-starter/
+proxy
+nameserver
