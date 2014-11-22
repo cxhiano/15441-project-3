@@ -1,15 +1,20 @@
 CC = gcc
 CFLAGS = -g -Wall  # -DDEBUG -DTESTING=1
 
-all: proxy
+all: proxy nameserver
 
 proxy: $(patsubst %.c, %.o, $(wildcard src/proxy/*.c)) \
 	   $(patsubst %.c, %.o, $(wildcard src/utils/*.c))
 	$(CC) $(CFLAGS) $^ -o proxy
 
+nameserver: $(patsubst %.c, %.o, $(wildcard src/nameserver/*.c)) \
+	   		$(patsubst %.c, %.o, $(wildcard src/utils/*.c))
+	$(CC) $(CFLAGS) $^ -o nameserver
+
 clean:
 	rm -vf proxy
 	cd src/proxy; make clean
+	cd src/nameserver; make clean
 	cd src/utils; make clean
 
 tar:
