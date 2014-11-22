@@ -1,6 +1,9 @@
-*.o
-*.g
 bitrate-project-starter/
 proxy
 nameserver
 test
+!src/proxy
+!src/nameserver
+!src/test
+*.o
+*.gch
