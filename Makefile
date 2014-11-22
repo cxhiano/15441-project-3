@@ -8,7 +8,7 @@ proxy: $(patsubst %.c, %.o, $(wildcard src/proxy/*.c)) \
 	$(CC) $(CFLAGS) $^ -o proxy
 
 clean:
-	rm -vf peer
+	rm -vf proxy
 	cd src/proxy; make clean
 	cd src/utils; make clean
 
