@@ -1,4 +1,3 @@
-#include <arpa/inet.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -6,10 +5,10 @@
 #include <netinet/in.h>
 #include <netinet/ip.h>
 #include "globals.h"
+#include "../utils/net.h"
 
 void usage() {
-    printf("...\n");
-
+    puts("./nameserver [-r] <log> <ip> <port> <servers> <LSAs>\n");
 }
 
 int setup_dns_server(char* ip, int port) {
@@ -21,10 +20,7 @@ int setup_dns_server(char* ip, int port) {
         return -1;
     }
 
-    memset((char *)&myaddr, 0, sizeof(myaddr));
-    myaddr.sin_family = AF_INET;
-    inet_aton(ip, (struct in_addr *)&myaddr.sin_addr.s_addr);
-    myaddr.sin_port = htons(port);
+    myaddr = make_sockaddr_in(ip, port);
 
     if (bind(sock, (struct sockaddr *) &myaddr, sizeof(myaddr)) == -1) {
         perror("setup_dns_server bind()");
@@ -34,7 +30,25 @@ int setup_dns_server(char* ip, int port) {
     return 0;
 }
 
+
 int get_server_list(char* fname) {
+    FILE* fp;
+    char server_ip[32];
+    sockaddr_in_t* addr;
+
+    if ((fp = fopen(fname, "r")) == NULL) {
+        perror("get_server_list: fopen() error");
+        return -1;
+    }
+
+    servers = create_list();
+
+    while (fscanf(fp, "%s", server_ip) != EOF) {
+        addr = malloc(sizeof(sockaddr_in_t));
+        *addr = make_sockaddr_in(server_ip, SERVER_PORT);
+        servers->add(servers, addr);
+    }
+
     return 0;
 }
 

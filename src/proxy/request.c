@@ -1,4 +1,3 @@
-#include <arpa/inet.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netinet/ip.h>
@@ -8,6 +7,7 @@
 #include "log.h"
 #include "request.h"
 #include "config.h"
+#include "../utils/net.h"
 
 request_t* create_request(int client_fd) {
     request_t* request = malloc(sizeof(request_t));
@@ -73,17 +73,6 @@ int req_parse(request_t* self) {
     }
 
     return 0;
-}
-
-static sockaddr_in_t make_sockaddr_in(char* ip, int port) {
-    sockaddr_in_t addr;
-
-    bzero((char *) &addr, sizeof(addr));
-    addr.sin_family = AF_INET;
-    inet_pton(AF_INET, ip, &(addr.sin_addr));
-    addr.sin_port = htons(port);
-
-    return addr;
 }
 
 int req_connect_server(request_t* self) {
