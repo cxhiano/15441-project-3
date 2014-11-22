@@ -1,3 +1,2 @@
 *.o
-*.gch
-proxy
+*.g
