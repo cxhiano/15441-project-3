@@ -2,7 +2,7 @@
 #include <string.h>
 #include "net.h"
 
-sockaddr_in_t make_sockaddr_in(char* ip, int port) {
+sockaddr_in_t make_sockaddr_in(const char* ip, unsigned int port) {
     sockaddr_in_t addr;
 
     bzero((char *) &addr, sizeof(addr));

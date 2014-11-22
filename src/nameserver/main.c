@@ -7,6 +7,8 @@
 #include "globals.h"
 #include "../utils/net.h"
 
+#define MAXBUF 8192
+
 void usage() {
     puts("./nameserver [-r] <log> <ip> <port> <servers> <LSAs>\n");
 }
@@ -27,7 +29,7 @@ int setup_dns_server(char* ip, int port) {
         return -1;
     }
 
-    return 0;
+    return sock;
 }
 
 
@@ -52,8 +54,25 @@ int get_server_list(char* fname) {
     return 0;
 }
 
+void serve(int listen_fd) {
+    char buf[MAXBUF];
+    ssize_t nbytes;
+
+    while (1) {
+        nbytes = recv(listen_fd, buf, MAXBUF, 0);
+        if (nbytes < 0) {
+            perror("serve: recv() error");
+            continue;
+        } else {
+            puts(buf);
+        }
+    }
+
+}
+
 int main(int argc, char* argv[]) {
     int i;
+    int listen_fd;
 
     if (argc < 2) {
         usage();
@@ -76,10 +95,12 @@ int main(int argc, char* argv[]) {
         i = 1;
     }
 
-    if (setup_dns_server(argv[i + 1], atoi(argv[i + 2])) == -1)
+    if ((listen_fd = setup_dns_server(argv[i + 1], atoi(argv[i + 2]))) == -1)
         exit(1);
     if (get_server_list(argv[i + 3]) == -1)
         exit(1);
+
+    serve(listen_fd);
 
     return 0;
 }

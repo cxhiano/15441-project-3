@@ -11,8 +11,12 @@ nameserver: $(patsubst %.c, %.o, $(wildcard src/nameserver/*.c)) \
 	   		$(patsubst %.c, %.o, $(wildcard src/utils/*.c))
 	$(CC) $(CFLAGS) $^ -o nameserver
 
+test: $(patsubst %.c, %.o, $(wildcard src/test/*.c)) \
+ 	  $(patsubst %.c, %.o, $(wildcard src/utils/*.c))
+	$(CC) $(CFLAGS) $^ -o test
+
 clean:
-	rm -vf proxy nameserver
+	rm -vf proxy nameserver test
 	cd src/proxy; make clean
 	cd src/nameserver; make clean
 	cd src/utils; make clean

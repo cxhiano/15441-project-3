@@ -3,6 +3,6 @@
 
 typedef struct sockaddr_in sockaddr_in_t;
 
-sockaddr_in_t make_sockaddr_in(char* ip, int port);
+sockaddr_in_t make_sockaddr_in(const char* ip, unsigned int port);
 
 #endif
