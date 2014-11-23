@@ -147,6 +147,15 @@ message_t* create_message() {
     return msg;
 }
 
+void free_message(message_t* msg) {
+    free(msg->header);
+    list_free(msg->question, free);
+    list_free(msg->answer, free);
+    list_free(msg->authority, free);
+    list_free(msg->additional, free);
+    free(msg);
+}
+
 int dumps_message(message_t* msg, char* buf) {
     assert(msg->header->QDCOUNT == msg->question->len);
     assert(msg->header->ANCOUNT == msg->answer->len);

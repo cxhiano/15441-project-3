@@ -117,6 +117,7 @@ typedef struct {
 } message_t;
 
 message_t* create_message();
+void free_message(message_t* msg);
 int dumps_message(message_t* msg, char* buf);
 message_t* loads_message(char* buf);
 

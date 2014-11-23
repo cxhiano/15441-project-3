@@ -6,6 +6,7 @@
 #include <netinet/ip.h>
 #include "globals.h"
 #include "../utils/net.h"
+#include "../utils/message.h"
 
 #define MAXBUF 8192
 
@@ -57,6 +58,8 @@ int get_server_list(char* fname) {
 void serve(int listen_fd) {
     char buf[MAXBUF];
     ssize_t nbytes;
+    message_t* msg;
+    question_t* q;
 
     while (1) {
         nbytes = recv(listen_fd, buf, MAXBUF, 0);
@@ -64,7 +67,9 @@ void serve(int listen_fd) {
             perror("serve: recv() error");
             continue;
         } else {
-            puts(buf);
+            msg = loads_message(buf);
+            q = list_get_i(msg->question, 0);
+            puts(q->QNAME);
         }
     }
 

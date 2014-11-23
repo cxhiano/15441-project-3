@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include "../utils/net.h"
 #include "../utils/mydns.h"
 #include "../utils/message.h"
 
@@ -43,7 +44,13 @@ void test_message() {
 
 }
 
+void test_dns() {
+    init_mydns("127.0.0.1", 12345);
+    resolve("video.cs.cmu.edu", "8080", NULL, NULL);
+
+}
+
 int main() {
-    test_message();
+    test_dns();
     return 0;
 }
