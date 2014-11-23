@@ -3,6 +3,7 @@
 #include <string.h>
 #include <sys/socket.h>
 #include "mydns.h"
+#include "log.h"
 #include "net.h"
 #include "message.h"
 #include "helpers.h"
@@ -26,7 +27,6 @@ int init_mydns(const char *dns_ip, unsigned int dns_port) {
 
 int resolve(const char *node, const char *service,
             const struct addrinfo *hints, struct addrinfo **res) {
-    sockaddr_in_t addr;
     char* ip;
     int port = atoi(service);
     int nbytes;
@@ -42,6 +42,7 @@ int resolve(const char *node, const char *service,
 
     nbytes = recv(sock, buf, MAXBUF, 0);
     ip = loads_response(buf);
+    *res = make_addrinfo(ip, port);
     free(ip);
 
     return 0;
