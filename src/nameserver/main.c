@@ -8,6 +8,7 @@
 #include "strategy.h"
 #include "../utils/net.h"
 #include "../utils/message.h"
+#include "../utils/helpers.h"
 
 #define MAXBUF 8192
 
@@ -55,21 +56,42 @@ int get_server_list(char* fname) {
     return 0;
 }
 
+resource_t* create_answer(char* domain, char* ip) {
+    resource_t* r = create_struct(sizeof(resource_t));
+    r->NAME = domain;
+    r->TYPE = r->CLASS = 1;
+    r->TTL = 0;
+    r->RDLENGTH = strlen(ip);
+    r->RDATA = ip;
+
+    return r;
+}
+
 void serve(int listen_fd) {
     char buf[MAXBUF];
+    sockaddr_in_t from;
+    socklen_t addr_len = sizeof(from);
     ssize_t nbytes;
-    message_t* msg;
-    question_t* q;
+    char *domain, *ip;
 
     while (1) {
-        nbytes = recv(listen_fd, buf, MAXBUF, 0);
+        nbytes = recvfrom(listen_fd, buf, MAXBUF, 0, (struct sockaddr*)&from,
+                          &addr_len);
+
         if (nbytes < 0) {
             perror("serve: recv() error");
             continue;
         } else {
-            msg = loads_message(buf);
-            q = list_get_i(msg->question, 0);
-            puts(round_robin(q->QNAME));
+            domain = loads_request(buf);
+            ip = round_robin(domain);
+
+            nbytes = dumps_response(domain, ip, buf);
+
+            if (sendto(listen_fd, buf, nbytes, 0, (struct sockaddr *)&from,
+                    addr_len) == -1)
+                perror("serve: sendto() error");
+
+            free(domain);
         }
     }
 

@@ -5,6 +5,7 @@
 #include "mydns.h"
 #include "net.h"
 #include "message.h"
+#include "helpers.h"
 
 #define MAXBUF 8192
 
@@ -23,33 +24,25 @@ int init_mydns(const char *dns_ip, unsigned int dns_port) {
     return 0;
 }
 
-static question_t* create_question(const char* qname) {
-    question_t* q = create_struct(sizeof(question_t));
-    q->QTYPE = q->QCLASS = 1;
-    q->QNAME = (char*)qname;
-
-    return q;
-}
-
 int resolve(const char *node, const char *service,
             const struct addrinfo *hints, struct addrinfo **res) {
     sockaddr_in_t addr;
+    char* ip;
     int port = atoi(service);
     int nbytes;
-    message_t* msg = create_message();
     char buf[MAXBUF];
 
-    msg->header->QDCOUNT = 1;
-    list_add(msg->question, create_question(node));
-
-    nbytes = dumps_message(msg, buf);
-    free_message(msg);
+    nbytes = dumps_request((char*)node, buf);
 
     if (sendto(sock, buf, nbytes, 0, (struct sockaddr *)&dns_addr,
             addr_len) == -1) {
         perror("resolve error: sendto()");
         return -1;
     }
+
+    nbytes = recv(sock, buf, MAXBUF, 0);
+    ip = loads_response(buf);
+    free(ip);
 
     return 0;
 }
