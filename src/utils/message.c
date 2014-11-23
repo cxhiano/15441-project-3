@@ -35,12 +35,12 @@ static char* loads_string(char* buf, int len) {
 
 
 void* create_struct(int size) {
-    header_t* h = malloc(sizeof(size));
-    memset(h, 0, sizeof(size));
-    return h;
+    void* s = malloc(size);
+    memset(s, 0, size);
+    return s;
 }
 
-void dumps_header(header_t* h, char* buf) {
+int dumps_header(header_t* h, char* buf) {
     dumps_uint16(buf, h->id);
 
     buf[2] = (h->QR << 7) + (h->Opcode << 3) + (h->AA << 2) + (h->TC << 1) +
@@ -52,6 +52,8 @@ void dumps_header(header_t* h, char* buf) {
     dumps_uint16(buf + 6, h->ANCOUNT);
     dumps_uint16(buf + 8, h->NSCOUNT);
     dumps_uint16(buf + 10, h->ARCOUNT);
+
+    return HEADER_SIZE;
 }
 
 header_t* loads_header(char* buf) {
@@ -77,7 +79,7 @@ header_t* loads_header(char* buf) {
     return h;
 }
 
-void dumps_question(question_t* q, char* buf) {
+int dumps_question(question_t* q, char* buf) {
     int len = strlen(q->QNAME) + 1;
 
     buf[0] = len;
@@ -85,6 +87,8 @@ void dumps_question(question_t* q, char* buf) {
 
     dumps_uint16(buf + len + 1, q->QTYPE);
     dumps_uint16(buf + len + 3, q->QCLASS);
+
+    return len + 5;
 }
 
 question_t* loads_question(char* buf) {
@@ -96,10 +100,12 @@ question_t* loads_question(char* buf) {
     q->QTYPE = loads_uint16(buf + len + 1);
     q->QCLASS = loads_uint16(buf + len + 3);
 
+    q->size = len + 5;
+
     return q;
 }
 
-void dumps_resource(resource_t* r, char* buf) {
+int dumps_resource(resource_t* r, char* buf) {
     int len = strlen(r->NAME);
 
     buf[0] = len;
@@ -110,6 +116,8 @@ void dumps_resource(resource_t* r, char* buf) {
     dumps_uint32(buf + len + 5, r->TTL);
     dumps_uint16(buf + len + 9, r->RDLENGTH);
     dumps_string(buf + len + 11, r->RDATA, r->RDLENGTH);
+
+    return len + 11 + r->RDLENGTH;
 }
 
 resource_t* loads_resource(char* buf) {
@@ -124,5 +132,94 @@ resource_t* loads_resource(char* buf) {
     r->RDLENGTH = loads_uint16(buf + len + 9);
     r->RDATA = loads_string(buf + len + 11, r->RDLENGTH);
 
+    r->size = len + 11 + r->RDLENGTH;
+
     return r;
+}
+
+message_t* create_message() {
+    message_t* msg = create_struct(sizeof(message_t));
+    msg->header = create_struct(sizeof(header_t));
+    msg->question = create_list();
+    msg->answer = create_list();
+    msg->authority = create_list();
+    msg->additional = create_list();
+    return msg;
+}
+
+int dumps_message(message_t* msg, char* buf) {
+    assert(msg->header->QDCOUNT == msg->question->len);
+    assert(msg->header->ANCOUNT == msg->answer->len);
+    assert(msg->header->NSCOUNT == msg->authority->len);
+    assert(msg->header->ARCOUNT == msg->additional->len);
+
+    int bytes_dumped = 0;
+    item_t* item;
+    question_t* q;
+    resource_t* r;
+
+    bytes_dumped += dumps_header(msg->header, buf);
+
+    ITER_LIST(item, msg->question) {
+        q = item->content;
+        bytes_dumped += dumps_question(q, buf + bytes_dumped);
+    }
+
+    ITER_LIST(item, msg->answer) {
+        r = item->content;
+        bytes_dumped += dumps_resource(r, buf + bytes_dumped);
+    }
+
+    ITER_LIST(item, msg->authority) {
+        r = item->content;
+        bytes_dumped += dumps_resource(r, buf + bytes_dumped);
+    }
+
+    ITER_LIST(item, msg->additional) {
+        r = item->content;
+        bytes_dumped += dumps_resource(r, buf + bytes_dumped);
+    }
+
+    return bytes_dumped;
+}
+
+message_t* loads_message(char* buf) {
+    int bytes_loaded = 0;
+    int i;
+    question_t* q;
+    resource_t* r;
+    message_t* msg = create_struct(sizeof(message_t));
+
+    msg->header = loads_header(buf);
+    bytes_loaded += HEADER_SIZE;
+
+    msg->question = create_list();
+    for (i = 0; i < msg->header->QDCOUNT; ++i) {
+        q = loads_question(buf + bytes_loaded);
+        bytes_loaded += q->size;
+        list_add(msg->question, q);
+    }
+
+    msg->answer = create_list();
+    for (i = 0; i < msg->header->ANCOUNT; ++i) {
+        r = loads_resource(buf + bytes_loaded);
+        bytes_loaded += r->size;
+        list_add(msg->answer, r);
+    }
+
+    msg->authority = create_list();
+    for (i = 0; i < msg->header->NSCOUNT; ++i) {
+        r = loads_resource(buf + bytes_loaded);
+        bytes_loaded += r->size;
+        list_add(msg->authority, r);
+    }
+
+    msg->additional = create_list();
+    for (i = 0; i < msg->header->ARCOUNT; ++i) {
+        r = loads_resource(buf + bytes_loaded);
+        bytes_loaded += r->size;
+        list_add(msg->additional, r);
+    }
+
+    return msg;
 }

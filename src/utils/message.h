@@ -1,6 +1,8 @@
 #ifndef __MESSAGE_H__
 #define __MESSAGE_H__
 
+#include "list.h"
+
 void* create_struct(int size);
 
 /**
@@ -31,7 +33,7 @@ typedef struct {
     uint16_t ARCOUNT;
 } header_t;
 
-void dumps_header(header_t* h, char* buf);
+int dumps_header(header_t* h, char* buf);
 header_t* loads_header(char* buf);
 
 /**
@@ -51,9 +53,10 @@ typedef struct {
     char* QNAME;
     uint16_t QTYPE;
     uint16_t QCLASS;
+    int size; //<! Total size of this struct in bytes
 } question_t;
 
-void dumps_question(question_t* q, char* buf);
+int dumps_question(question_t* q, char* buf);
 question_t* loads_question(char* buf);
 
 /**
@@ -85,9 +88,36 @@ typedef struct {
     uint32_t TTL;
     uint16_t RDLENGTH;
     char* RDATA;
+    int size; //<! Total size of this struct in bytes
 } resource_t;
 
-void dumps_resource(resource_t* r, char* buf);
+int dumps_resource(resource_t* r, char* buf);
 resource_t* loads_resource(char* buf);
+
+/**
+ *
+ *  +---------------------+
+ *  |        Header       |
+ *  +---------------------+
+ *  |       Question      | the question for the name server
+ *  +---------------------+
+ *  |        Answer       | RRs answering the question
+ *  +---------------------+
+ *  |      Authority      | RRs pointing toward an authority
+ *  +---------------------+
+ *  |      Additional     | RRs holding additional information
+ *  +---------------------+
+ */
+typedef struct {
+    header_t* header;
+    list_t* question;
+    list_t* answer;
+    list_t* authority;
+    list_t* additional;
+} message_t;
+
+message_t* create_message();
+int dumps_message(message_t* msg, char* buf);
+message_t* loads_message(char* buf);
 
 #endif
