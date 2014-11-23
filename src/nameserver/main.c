@@ -5,6 +5,7 @@
 #include <netinet/in.h>
 #include <netinet/ip.h>
 #include "globals.h"
+#include "strategy.h"
 #include "../utils/net.h"
 #include "../utils/message.h"
 
@@ -33,11 +34,10 @@ int setup_dns_server(char* ip, int port) {
     return sock;
 }
 
-
 int get_server_list(char* fname) {
     FILE* fp;
     char server_ip[32];
-    sockaddr_in_t* addr;
+    char* tmp;
 
     if ((fp = fopen(fname, "r")) == NULL) {
         perror("get_server_list: fopen() error");
@@ -47,9 +47,9 @@ int get_server_list(char* fname) {
     servers = create_list();
 
     while (fscanf(fp, "%s", server_ip) != EOF) {
-        addr = malloc(sizeof(sockaddr_in_t));
-        *addr = make_sockaddr_in(server_ip, SERVER_PORT);
-        servers->add(servers, addr);
+        tmp = malloc(32);
+        strcpy(tmp, server_ip);
+        servers->add(servers, tmp);
     }
 
     return 0;
@@ -69,7 +69,7 @@ void serve(int listen_fd) {
         } else {
             msg = loads_message(buf);
             q = list_get_i(msg->question, 0);
-            puts(q->QNAME);
+            puts(round_robin(q->QNAME));
         }
     }
 
