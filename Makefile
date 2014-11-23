@@ -19,6 +19,7 @@ clean:
 	rm -vf proxy nameserver test
 	cd src/proxy; make clean
 	cd src/nameserver; make clean
+	cd src/test; make clean
 	cd src/utils; make clean
 
 tar:

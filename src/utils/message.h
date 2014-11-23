@@ -1,6 +1,8 @@
 #ifndef __MESSAGE_H__
 #define __MESSAGE_H__
 
+void* create_struct(int size);
+
 /**
  *                                  1  1  1  1  1  1
  *    0  1  2  3  4  5  6  7  8  9  0  1  2  3  4  5
@@ -29,8 +31,29 @@ typedef struct {
     uint16_t ARCOUNT;
 } header_t;
 
-header_t* create_header();
-char* dumps_header(header_t* h);
+void dumps_header(header_t* h, char* buf);
 header_t* loads_header(char* buf);
+
+/**
+ *                                  1  1  1  1  1  1
+ *    0  1  2  3  4  5  6  7  8  9  0  1  2  3  4  5
+ *  +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+ *  |                                               |
+ *  /                     QNAME                     /
+ *  /                                               /
+ *  +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+ *  |                     QTYPE                     |
+ *  +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+ *  |                     QCLASS                    |
+ *  +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+ */
+typedef struct {
+    char* QNAME;
+    uint16_t QTYPE;
+    uint16_t QCLASS;
+} question_t;
+
+void dumps_question(question_t* q, char* buf);
+question_t* loads_question(char* buf);
 
 #endif
