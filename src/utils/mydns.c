@@ -42,6 +42,8 @@ int resolve(const char *node, const char *service,
 
     nbytes = recv(sock, buf, MAXBUF, 0);
     ip = loads_response(buf);
+    if (ip == NULL) return -1;
+
     *res = make_addrinfo(ip, port);
     free(ip);
 

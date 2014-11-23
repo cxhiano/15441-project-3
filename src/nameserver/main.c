@@ -98,22 +98,27 @@ void serve(int listen_fd) {
 
             from_ip = inet_ntoa(from.sin_addr);
 
-            // Get ip of requested domain
-            if (strategy == S_ROUND_ROBIN)
-                ip = round_robin(domain);
-            else
-                ip = NULL;
+            if (domain == NULL || strcmp(domain, "video.cs.cmu.edu") != 0) {
+                nbytes = dumps_response(NULL, NULL, buf);
+            } else {
+                // Get ip of requested domain
+                if (strategy == S_ROUND_ROBIN)
+                    ip = round_robin(domain);
+                else
+                    ip = NULL;
 
-            log_msg(L_INFO, "%d %s %s %s\n", now(), from_ip, domain, ip);
+                log_msg(L_INFO, "%d %s %s %s\n", now(), from_ip, domain, ip);
 
-            // Serialize response
-            nbytes = dumps_response(domain, ip, buf);
+                // Serialize response
+                nbytes = dumps_response(domain, ip, buf);
+            }
+
 
             if (sendto(listen_fd, buf, nbytes, 0, (struct sockaddr *)&from,
                     addr_len) == -1)
                 log_error("serve: sendto() error");
 
-            free(domain);
+            if (domain) free(domain);
         }
     }
 

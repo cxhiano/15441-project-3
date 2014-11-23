@@ -24,8 +24,14 @@ int dumps_request(char* domain, char* buf) {
 char* loads_request(char* buf) {
     message_t* msg = loads_message(buf);
     question_t* r = list_get(msg->question, 0);
-    char* domain = r->QNAME;
+    char* domain;
 
+    if (r == NULL) {
+        free_message(msg);
+        return NULL;
+    }
+
+    domain = r->QNAME;
     free_message(msg);
 
     return domain;
@@ -37,17 +43,21 @@ int dumps_response(char* domain, char* ip, char* buf) {
     int nbytes;
 
     msg->header->AA = 1;
-    msg->header->ANCOUNT = 1;
+    if (domain == NULL) {
+        msg->header->RCODE = 3;
+        free(r);
+    } else {
+        msg->header->ANCOUNT = 1;
 
-    r->NAME = domain;
-    r->TYPE = r->CLASS = 1;
-    r->TTL = 0;
-    r->RDLENGTH = strlen(ip) + 1;
-    r->RDATA = ip;
-    list_add(msg->answer, r);
+        r->NAME = domain;
+        r->TYPE = r->CLASS = 1;
+        r->TTL = 0;
+        r->RDLENGTH = strlen(ip) + 1;
+        r->RDATA = ip;
+        list_add(msg->answer, r);
+    }
 
     nbytes = dumps_message(msg, buf);
-
     free_message(msg);
 
     return nbytes;
@@ -56,8 +66,14 @@ int dumps_response(char* domain, char* ip, char* buf) {
 char* loads_response(char* buf) {
     message_t* msg = loads_message(buf);
     resource_t* r = list_get(msg->answer, 0);
-    char* ip = r->RDATA;
+    char* ip;
 
+    if (r == NULL) {
+        free_message(msg);
+        return NULL;
+    }
+
+    ip = r->RDATA;
     free_message(msg);
 
     return ip;
