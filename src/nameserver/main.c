@@ -83,7 +83,11 @@ void serve(int listen_fd) {
             continue;
         } else {
             domain = loads_request(buf);
-            ip = round_robin(domain);
+
+            if (strategy == S_ROUND_ROBIN)
+                ip = round_robin(domain);
+            else
+                ip = NULL;
 
             nbytes = dumps_response(domain, ip, buf);
 
@@ -126,7 +130,10 @@ int main(int argc, char* argv[]) {
         exit(1);
     if (get_server_list(argv[i + 3]) == -1)
         exit(1);
+    if (lsa_init(argv[i + 4]) == -1)
+        exit(1);
 
+    print_graph();
     serve(listen_fd);
 
     return 0;

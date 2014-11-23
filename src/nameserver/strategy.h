@@ -3,4 +3,8 @@
 
 char* round_robin(char* qname);
 
+int lsa_init(char* lsa_file);
+
+void print_graph();
+
 #endif
