@@ -3,8 +3,9 @@
 
 #define BUFSIZE 8192
 
+char buf[BUFSIZE];
+
 void test_header() {
-    char buf[BUFSIZE];
     header_t* h = create_struct(sizeof(header_t));
 
     h->id = 1;
@@ -25,7 +26,6 @@ void test_header() {
 }
 
 void test_question() {
-    char buf[BUFSIZE];
     question_t* q = create_struct(sizeof(question_t));
 
     q->QNAME = "video.cs.cmu.edu";
@@ -36,7 +36,23 @@ void test_question() {
     q = loads_question(buf);
 }
 
+void test_resource() {
+    resource_t* r = create_struct(sizeof(resource_t));
+
+    r->NAME = "video.cs.cmu.edu";
+    r->TYPE = 1;
+    r->CLASS = 1;
+    r->TTL = 214722222;
+    r->RDLENGTH = 8;
+    r->RDATA = "3.0.0.1";
+
+    dumps_resource(r, buf);
+    r = loads_resource(buf);
+
+}
+
 int main() {
-    test_question();
+    test_header();
+    test_resource();
     return 0;
 }

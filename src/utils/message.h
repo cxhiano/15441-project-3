@@ -56,4 +56,38 @@ typedef struct {
 void dumps_question(question_t* q, char* buf);
 question_t* loads_question(char* buf);
 
+/**
+ *                                  1  1  1  1  1  1
+ *    0  1  2  3  4  5  6  7  8  9  0  1  2  3  4  5
+ *  +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+ *  |                                               |
+ *  /                                               /
+ *  /                      NAME                     /
+ *  |                                               |
+ *  +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+ *  |                      TYPE                     |
+ *  +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+ *  |                     CLASS                     |
+ *  +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+ *  |                      TTL                      |
+ *  |                                               |
+ *  +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+ *  |                   RDLENGTH                    |
+ *  +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--|
+ *  /                     RDATA                     /
+ *  /                                               /
+ *  +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+ */
+typedef struct {
+    char* NAME;
+    uint16_t TYPE;
+    uint16_t CLASS;
+    uint32_t TTL;
+    uint16_t RDLENGTH;
+    char* RDATA;
+} resource_t;
+
+void dumps_resource(resource_t* r, char* buf);
+resource_t* loads_resource(char* buf);
+
 #endif
