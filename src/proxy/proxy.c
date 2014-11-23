@@ -1,7 +1,7 @@
 #include <stdlib.h>
 #include "config.h"
 #include "server.h"
-#include "log.h"
+#include "../utils/log.h"
 
 void usage() {
     printf("...\n");

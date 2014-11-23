@@ -4,6 +4,7 @@
 #include "globals.h"
 #include "graph.h"
 #include "../utils/list.h"
+#include "../utils/log.h"
 
 int rr_pointer = 0;
 
@@ -40,7 +41,7 @@ int lsa_init(char* lsa_file) {
     node_t* node;
 
     if ((fp = fopen(lsa_file, "r")) == NULL) {
-        perror("lsa_init: fopen() error");
+        log_error("lsa_init: fopen() error");
         return -1;
     }
 
@@ -64,11 +65,11 @@ void print_graph() {
 
     ITER_LIST(i1, G->nodes) {
         n1 = i1->content;
-        printf("%s:", n1->name);
+        log_msg(L_DEBUG, "%s:", n1->name);
         ITER_LIST(i2, n1->neighbors) {
             n2 = i2->content;
-            printf(" %s", n2->name);
+            log_msg(L_DEBUG, " %s", n2->name);
         }
-        puts("");
+        log_msg(L_DEBUG, "\n");
     }
 }

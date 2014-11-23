@@ -1,16 +1,27 @@
+#include <arpa/inet.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
+#include <sys/time.h>
 #include <netinet/in.h>
 #include <netinet/ip.h>
 #include "globals.h"
 #include "strategy.h"
+#include "../utils/log.h"
 #include "../utils/net.h"
 #include "../utils/message.h"
 #include "../utils/helpers.h"
 
 #define MAXBUF 8192
+
+int now()
+{
+    struct timeval now;
+
+    gettimeofday(&now, NULL);
+    return now.tv_sec;
+}
 
 void usage() {
     puts("./nameserver [-r] <log> <ip> <port> <servers> <LSAs>\n");
@@ -25,14 +36,14 @@ int setup_dns_server(char* ip, int port) {
     struct sockaddr_in myaddr;
 
     if ((sock = socket(AF_INET, SOCK_DGRAM, 0)) == -1) {
-        perror("setup_dns_server socket()");
+        log_error("setup_dns_server socket()");
         return -1;
     }
 
     myaddr = make_sockaddr_in(ip, port);
 
     if (bind(sock, (struct sockaddr *) &myaddr, sizeof(myaddr)) == -1) {
-        perror("setup_dns_server bind()");
+        log_error("setup_dns_server bind()");
         return -1;
     }
 
@@ -49,7 +60,7 @@ int get_server_list(char* fname) {
     char* tmp;
 
     if ((fp = fopen(fname, "r")) == NULL) {
-        perror("get_server_list: fopen() error");
+        log_error("get_server_list: fopen() error");
         return -1;
     }
 
@@ -72,18 +83,20 @@ void serve(int listen_fd) {
     sockaddr_in_t from;
     socklen_t addr_len = sizeof(from);
     ssize_t nbytes;
-    char *domain, *ip;
+    char *domain, *ip, *from_ip;
 
     while (1) {
         nbytes = recvfrom(listen_fd, buf, MAXBUF, 0, (struct sockaddr*)&from,
                           &addr_len);
 
         if (nbytes < 0) {
-            perror("serve: recv() error");
+            log_error("serve: recv() error");
             continue;
         } else {
             // Deserialize request
             domain = loads_request(buf);
+
+            from_ip = inet_ntoa(from.sin_addr);
 
             // Get ip of requested domain
             if (strategy == S_ROUND_ROBIN)
@@ -91,12 +104,14 @@ void serve(int listen_fd) {
             else
                 ip = NULL;
 
+            log_msg(L_INFO, "%d %s %s %s\n", now(), from_ip, domain, ip);
+
             // Serialize response
             nbytes = dumps_response(domain, ip, buf);
 
             if (sendto(listen_fd, buf, nbytes, 0, (struct sockaddr *)&from,
                     addr_len) == -1)
-                perror("serve: sendto() error");
+                log_error("serve: sendto() error");
 
             free(domain);
         }
@@ -129,6 +144,7 @@ int main(int argc, char* argv[]) {
         i = 1;
     }
 
+    log_mask = L_ERROR | L_INFO;
     if ((listen_fd = setup_dns_server(argv[i + 1], atoi(argv[i + 2]))) == -1)
         exit(1);
     if (get_server_list(argv[i + 3]) == -1)

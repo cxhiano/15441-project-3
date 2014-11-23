@@ -4,9 +4,9 @@
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include "log.h"
 #include "request.h"
 #include "config.h"
+#include "../utils/log.h"
 #include "../utils/net.h"
 
 request_t* create_request(int client_fd) {

@@ -6,8 +6,8 @@
 #include <unistd.h>
 #include "server.h"
 #include "io.h"
-#include "log.h"
 #include "request.h"
+#include "../utils/log.h"
 #include "../utils/list.h"
 
 /** @brief Create and config a socket on given port. */

@@ -1,20 +1,10 @@
-/** @file io.c
- *  @brief Provides functions to read data from socket or write data to socket
- *
- *  The function take a greedy approach, that is, send and receive as much bytes
- *  as possible in one call. When receiving, the buffer size will increase
- *  dynamically. When sending, the buffer size might shrink when it's empty
- *  enough.
- *
- *  @author Chao Xin(cxin)
- */
 #include <stdlib.h>
 #include <sys/socket.h>
 #include <string.h>
 #include <errno.h>
 #include <unistd.h>
 #include "io.h"
-#include "log.h"
+#include "../utils/log.h"
 
 static select_context context;
 

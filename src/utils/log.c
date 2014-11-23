@@ -18,11 +18,6 @@
 FILE *log_file = NULL;
 int log_mask = L_ERROR; //By default, only error message will be logged.
 
-/** @brief Set the file where logs will be output to
- *
- *  @param fname The log file name
- *  @return void
- */
 void set_log_file(char *fname) {
     FILE *f;
 
@@ -33,22 +28,6 @@ void set_log_file(char *fname) {
     log_file = f;
 }
 
-/** @brief Write formatted logs
- *
- *  Create a new log message with given type(Defined in log.h). The message
- *  will be written into log file if the type is in log_mask.
- *
- *  The output in this function is implemented using vfprintf. Thus this
- *  function can be used like printf(char* format, ... )
- *
- *  When log_file is NULL, the message will be output to stderr
- *
- *  @param type The type of the log message
- *  @param format The output format
- *  @oaram ... Arguments for the format
- *
- *  @return void
- */
 void log_msg(int type, char* format, ...) {
     va_list arguments;
 
@@ -64,15 +43,6 @@ void log_msg(int type, char* format, ...) {
     fflush(log_file);
 }
 
-/** @brief Write an error log
- *
- *  Works like perror(). The string explanation of errno will be appended to the
- *  passed-in message.
- *
- *  @param msg - The message about the error
- *
- *  @return void
- */
 void log_error(char* msg) {
     log_msg(L_ERROR, "%s : %s\n", msg, strerror(errno));
 }
