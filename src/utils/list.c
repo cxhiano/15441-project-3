@@ -8,10 +8,8 @@ list_t* create_list() {
     list->head = NULL;
 
     list->add = list_add;
-    list->remove_c = list_remove_c;
-    list->remove_i = list_remove_i;
-    list->get_c = list_get_c;
-    list->get_i = list_get_i;
+    list->remove = list_remove;
+    list->get = list_get;
     list->free = list_free;
 
     return list;
@@ -38,21 +36,7 @@ static void remove_from_list(item_t* target, list_t* list, item_t* prev) {
     free(target);
 }
 
-int list_remove_c(list_t* self, int (*condition)(void*)) {
-    item_t* item, *prev;
-
-    ITER_LIST(item, self) {
-        if (condition(item)) {
-            remove_from_list(item, self, prev);
-            return 0;
-        }
-        prev = item;
-    }
-
-    return -1;
-}
-
-int list_remove_i(list_t* self, int index) {
+int list_remove(list_t* self, int index) {
     item_t* item, *prev;
     int i = 0;
 
@@ -68,17 +52,7 @@ int list_remove_i(list_t* self, int index) {
     return -1;
 }
 
-void* list_get_c(list_t* self, int (*condition)(void*)) {
-    item_t* item;
-
-    ITER_LIST(item, self)
-        if (condition(item->content))
-            return item->content;
-
-    return NULL;
-}
-
-void* list_get_i(list_t* self, int index) {
+void* list_get(list_t* self, int index) {
     item_t* item;
     int i  = 0;
 

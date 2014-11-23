@@ -3,6 +3,9 @@
 
 #include "list.h"
 
+/**
+ * Create a struct of given size and initialize it to all 0s
+ */
 void* create_struct(int size);
 
 /**

@@ -121,7 +121,7 @@ void serve(unsigned short port) {
                 if (req->server_fd != -1)
                     remove_read_fd(req->server_fd);
                 req->finalize(req);
-                request_list->remove_i(request_list, i);
+                request_list->remove(request_list, i);
             }
 
         }

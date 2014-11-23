@@ -23,7 +23,7 @@ int dumps_request(char* domain, char* buf) {
 
 char* loads_request(char* buf) {
     message_t* msg = loads_message(buf);
-    question_t* r = list_get_i(msg->question, 0);
+    question_t* r = list_get(msg->question, 0);
     char* domain = r->QNAME;
 
     free_message(msg);
@@ -55,7 +55,7 @@ int dumps_response(char* domain, char* ip, char* buf) {
 
 char* loads_response(char* buf) {
     message_t* msg = loads_message(buf);
-    resource_t* r = list_get_i(msg->answer, 0);
+    resource_t* r = list_get(msg->answer, 0);
     char* ip = r->RDATA;
 
     free_message(msg);

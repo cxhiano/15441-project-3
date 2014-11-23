@@ -16,6 +16,10 @@ void usage() {
     puts("./nameserver [-r] <log> <ip> <port> <servers> <LSAs>\n");
 }
 
+/**
+ * Setup socket listen on given ip and port
+ * @return      0 if socket is setup successfully. Otherwise -1
+ */
 int setup_dns_server(char* ip, int port) {
     int sock;
     struct sockaddr_in myaddr;
@@ -35,6 +39,10 @@ int setup_dns_server(char* ip, int port) {
     return sock;
 }
 
+/**
+ * Parse server list from given file
+ * @return       0 on success. Otherwise -1
+ */
 int get_server_list(char* fname) {
     FILE* fp;
     char server_ip[32];
@@ -56,17 +64,9 @@ int get_server_list(char* fname) {
     return 0;
 }
 
-resource_t* create_answer(char* domain, char* ip) {
-    resource_t* r = create_struct(sizeof(resource_t));
-    r->NAME = domain;
-    r->TYPE = r->CLASS = 1;
-    r->TTL = 0;
-    r->RDLENGTH = strlen(ip);
-    r->RDATA = ip;
-
-    return r;
-}
-
+/**
+ * Listen on given file descriptor. Receive, parse and respnose DNS queries.
+ */
 void serve(int listen_fd) {
     char buf[MAXBUF];
     sockaddr_in_t from;
@@ -82,13 +82,16 @@ void serve(int listen_fd) {
             perror("serve: recv() error");
             continue;
         } else {
+            // Deserialize request
             domain = loads_request(buf);
 
+            // Get ip of requested domain
             if (strategy == S_ROUND_ROBIN)
                 ip = round_robin(domain);
             else
                 ip = NULL;
 
+            // Serialize response
             nbytes = dumps_response(domain, ip, buf);
 
             if (sendto(listen_fd, buf, nbytes, 0, (struct sockaddr *)&from,

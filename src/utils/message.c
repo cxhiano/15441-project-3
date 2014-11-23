@@ -33,7 +33,6 @@ static char* loads_string(char* buf, int len) {
     return name;
 }
 
-
 void* create_struct(int size) {
     void* s = malloc(size);
     memset(s, 0, size);

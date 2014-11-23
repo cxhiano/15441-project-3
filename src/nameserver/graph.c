@@ -5,14 +5,17 @@
 node_t* create_node(graph_t* G, char* name) {
    node_t* node = malloc(sizeof(node_t));
 
+   // Make a copy of the string name
    node->name = malloc(strlen(name) + 1);
    strcpy(node->name, name);
 
    node->ts = -1;
 
+   // Put the node in the graph
    node->G = G;
    add_node(G, node);
 
+   // Create an empty neighbor list
    node->neighbors = create_list();
 
    return node;
@@ -33,18 +36,25 @@ void update_node(node_t* node, int ts, list_t* neighbor_name) {
     char* name;
     node_t* n;
 
+    // Discard data with older timestamp
     if (ts < node->ts) return;
 
+    // Discard old neighbor list and create a new one
     list_free(node->neighbors, NULL);
     node->neighbors = create_list();
 
     ITER_LIST(item, neighbor_name) {
         name = item->content;
+
         n = get_node_by_name(node->G, name);
+
+        // Create new node if the name does not exist in G
         if (n == NULL)
             n = create_node(node->G, name);
+
         list_add(node->neighbors, n);
     }
+    // Update timestamp
     node->ts = ts;
 }
 
@@ -58,6 +68,7 @@ void free_graph(graph_t* G) {
     item_t* item;
     node_t* n;
 
+    // Free all nodes
     ITER_LIST(item, G->nodes) {
         n = item->content;
         free_node(n);

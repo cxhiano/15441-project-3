@@ -9,12 +9,17 @@ int rr_pointer = 0;
 
 char* round_robin(char* qname) {
     rr_pointer = (rr_pointer + 1) % servers->len;
-    return servers->get_i(servers, rr_pointer);
+    return servers->get(servers, rr_pointer);
 }
 
 graph_t* G;
 #define MAXBUF 8192
 
+/**
+ * Parse neighbors separated by ',' into a list of neighbor names
+ * @param  neighbors A comma separated neighbor name list
+ * @return           A list of neighbor names
+ */
 list_t* parse_neighbors(char* neighbors) {
     char* token = strtok(neighbors, ",");
     list_t* list = create_list();
@@ -43,8 +48,10 @@ int lsa_init(char* lsa_file) {
 
     while (fscanf(fp, "%s %d %s", sender, &ts, neighbors) != EOF) {
         node = get_node_by_name(G, sender);
+        // Create corresponding node if the sender does not exist
         if (node == NULL)
             node = create_node(G, sender);
+        // Update neighbor information of sender in graph
         update_node(node, ts, parse_neighbors(neighbors));
     }
 
