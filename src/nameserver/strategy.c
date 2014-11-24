@@ -8,7 +8,7 @@
 
 int rr_pointer = 0;
 
-char* round_robin(char* qname) {
+char* round_robin(char* domain) {
     rr_pointer = (rr_pointer + 1) % servers->len;
     return servers->get(servers, rr_pointer);
 }
@@ -39,6 +39,9 @@ int lsa_init(char* lsa_file) {
     int ts;
     FILE* fp;
     node_t* node;
+    item_t* item;
+    char* ip;
+    distvector_t* dv;
 
     if ((fp = fopen(lsa_file, "r")) == NULL) {
         log_error("lsa_init: fopen() error");
@@ -56,6 +59,22 @@ int lsa_init(char* lsa_file) {
         update_node(node, ts, parse_neighbors(neighbors));
     }
 
+    ITER_LIST(item, servers) {
+        ip = item->content;
+        node_t* node = get_node_by_name(G, ip);
+        if (node == NULL) {
+            log_msg(L_ERROR,
+                    "lsa_init: video server %s does not appear in lsa file\n",
+                    ip);
+            continue;
+        }
+
+        // Run dijkstra to calculate single source shortest path orgin at node
+        dv = create_distvector(G, node);
+        calculate(G, dv);
+        list_add(G->DVs, dv);
+    }
+
     return 0;
 }
 
@@ -65,11 +84,34 @@ void print_graph() {
 
     ITER_LIST(i1, G->nodes) {
         n1 = i1->content;
-        log_msg(L_DEBUG, "%s:", n1->name);
+        log_msg(L_DEBUG, "%d %s:", n1->id, n1->name);
         ITER_LIST(i2, n1->neighbors) {
             n2 = i2->content;
             log_msg(L_DEBUG, " %s", n2->name);
         }
         log_msg(L_DEBUG, "\n");
     }
+
+    print_dv(G);
+}
+
+char* nearest_server(char* domain, char* from_ip) {
+    distvector_t* dv;
+    item_t* item;
+    node_t* node;
+    char* best_ip = NULL;
+    int shortest_dist;
+
+    node = get_node_by_name(G, from_ip);
+    if (node == NULL) return NULL;
+
+    ITER_LIST(item, G->DVs) {
+        dv = item->content;
+        if (best_ip == NULL || dv->dist[node->id] < shortest_dist) {
+            shortest_dist = dv->dist[node->id];
+            best_ip = dv->node->name;
+        }
+    }
+
+    return best_ip;
 }

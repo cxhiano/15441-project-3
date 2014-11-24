@@ -13,8 +13,18 @@ char* round_robin(char* domain);
 int lsa_init(char* lsa_file);
 
 /**
- * Print net work graph
+ * Print informations of network graph
  */
 void print_graph();
+
+/**
+ * Return the ip of nearest video server
+ *
+ * @param  domain  The domain name to be resolved
+ * @param  from_ip The ip of the client
+ * @return         ip of the nearest video server. NULL if given client ip does
+ *                 not exist in the network
+ */
+char* nearest_server(char* domain, char* from_ip);
 
 #endif

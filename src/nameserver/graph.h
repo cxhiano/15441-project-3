@@ -4,10 +4,12 @@
 #include "../utils/list.h"
 
 typedef struct node_s node_t;
+typedef struct distvector_s distvector_t;
 typedef struct graph_s graph_t;
 
 struct node_s {
     char* name;     //<! The name associated with the node(must be unique)
+    int id;         //<! The id of the node.
     graph_t* G;     //<! The graph this node belongs to
     int ts;         //<! The timestamp of the data associated with this node
     list_t* neighbors;  //<! A list of neighbors
@@ -46,7 +48,8 @@ void add_neighbor(node_t* node, node_t* neighbor);
 void update_node(node_t* node, int ts, list_t* neighbor_name);
 
 struct graph_s {
-    list_t* nodes;
+    list_t* nodes; //<! A list of all nodes in the graph
+    list_t* DVs;   //<! A list of several distance vectors
 };
 
 /**
@@ -69,5 +72,39 @@ void add_node(graph_t* G, node_t* n);
  * cannot be found
  */
 node_t* get_node_by_name(graph_t* G, char* name);
+
+/**
+ * Return a pointer to the node with given id. Return NULL if such node cannot
+ * be found
+ */
+node_t* get_node_by_id(graph_t* G, int id);
+
+/*
+ * The limit of distance. The distance to nodes that can not be reached will be
+ * set to INF.
+ */
+#define INF 1000000000
+
+struct distvector_s {
+    node_t* node;
+    int* dist;
+};
+
+/**
+ * Create a distance vector
+ * @param  G    The graph corresponding to the distance vector
+ * @param  node The origin of the distance vector
+ */
+distvector_t* create_distvector(graph_t* G, node_t* node);
+
+/**
+ * Run shortest path algorithm to calculate the distance vector
+ */
+void calculate(graph_t* G, distvector_t* dv);
+
+/**
+ * Print out all distance vector of given graph
+ */
+void print_dv(graph_t* G);
 
 #endif

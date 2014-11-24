@@ -47,7 +47,7 @@ void test_message() {
 void test_dns() {
     struct addrinfo *result;
     init_mydns("127.0.0.1", 12345);
-    printf("%d\n", resolve("videocs.cmu.edu", "8080", NULL, &result));
+    printf("%d\n", resolve("video.cs.cmu.edu", "8080", NULL, &result));
 
 }
 

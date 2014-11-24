@@ -98,15 +98,21 @@ void serve(int listen_fd) {
 
             from_ip = inet_ntoa(from.sin_addr);
 
-            if (domain == NULL || strcmp(domain, "video.cs.cmu.edu") != 0) {
-                nbytes = dumps_response(NULL, NULL, buf);
-            } else {
+            if (domain != NULL) {
                 // Get ip of requested domain
                 if (strategy == S_ROUND_ROBIN)
                     ip = round_robin(domain);
                 else
-                    ip = NULL;
+                    ip = nearest_server(domain, from_ip);
+            }
 
+            // The request contains no question or the request domain is not
+            // video.cs.cmu.edu
+            if (domain == NULL || ip == NULL ||
+                    strcmp(domain, "video.cs.cmu.edu") != 0) {
+                log_msg(L_DEBUG, "Invalid request from %s\n", from_ip);
+                nbytes = dumps_response(NULL, NULL, buf);
+            } else {
                 log_msg(L_INFO, "%d %s %s %s\n", now(), from_ip, domain, ip);
 
                 // Serialize response
@@ -149,7 +155,7 @@ int main(int argc, char* argv[]) {
         i = 1;
     }
 
-    log_mask = L_ERROR | L_INFO;
+    log_mask = L_ERROR | L_INFO | L_DEBUG;
     if ((listen_fd = setup_dns_server(argv[i + 1], atoi(argv[i + 2]))) == -1)
         exit(1);
     if (get_server_list(argv[i + 3]) == -1)
