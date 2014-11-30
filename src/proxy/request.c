@@ -1,126 +1,346 @@
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <netinet/ip.h>
-#include <string.h>
+#include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
+#include <string.h>
 #include "request.h"
-#include "config.h"
-#include "../utils/log.h"
-#include "../utils/net.h"
 
-request_t* create_request(int client_fd) {
-    request_t* request = malloc(sizeof(request_t));
-
-    request->client_fd = client_fd;
-    request->server_fd = -1;
-
-    request->parse = req_parse;
-    request->connect_server = req_connect_server;
-    request->forward = req_forward;
-    request->finalize = req_finalize;
-
-    return request;
-}
-
-static int parse_uri(char* str, uri_t *uri)
+request_node* create_request_node()
 {
-    char *host_start, *path_start, *port_start;
-    int prot_len;       //The length of "http://"
+    request_node* node;
 
-    if (str[0] == '/') {
-        strcpy(uri->host, "localhost");
-        strcpy(uri->path, str);
+    node = (request_node *)malloc(sizeof(request_node));
+    if (node == NULL)
+        return NULL;
+    node->res = create_response();
+    if (node->res == NULL) {
+        free(node);
+        return NULL;
+    }
+    node->method = NONE;
+    node->stage = START;
+    node->uri[0] = '\0';
+    node->query[0] = '\0';
+    node->headers.accept[0] = '\0';
+    node->headers.accept_charset[0] = '\0';
+    node->headers.accept_encoding[0] = '\0';
+    node->headers.accept_language[0] = '\0';
+    node->headers.content_type[0] = '\0';
+    node->headers.cookie[0] = '\0';
+    node->headers.host[0] = '\0';
+    node->headers.referer[0] = '\0';
+    node->headers.user_agent[0] = '\0';
+    node->close = 0;
+    node->header_num = 0;
+    node->body_size = -1;
+    node->body_read = 0;
+    node->body_write = 0;
+    node->body_buf = NULL;
+    node->next = NULL;
+
+    return node;
+}
+
+void request_node_free(request_node* node)
+{
+    if (node->body_buf != NULL)
+        free(node->body_buf);
+    if (node->res != NULL)
+        response_free(node->res);
+    free(node);
+}
+
+request_queue* create_request_queue()
+{
+    request_queue* queue;
+
+    queue = (request_queue *)malloc(sizeof(request_queue));
+    if (queue == NULL)
+        return NULL;
+    queue->head = NULL;
+    queue->tail = NULL;
+
+    return queue;
+}
+
+void request_queue_add_node(request_queue* queue, request_node* node)
+{
+    if (queue->head == NULL) {
+        queue->head = node;
+        queue->tail = node;
     } else {
-        prot_len = strlen("http://");
-        if (strstr(str, "http://") == NULL || strlen(str) <= prot_len)
-            return -1;
+        queue->tail->next = node;
+        queue->tail = node;
+    }
+}
 
-        host_start = str + prot_len;
-        path_start = strchr(host_start, '/');
-        if (path_start == NULL) {
-            strcpy(uri->path, "/");
-            strcpy(uri->host, host_start);
-        }
+request_node* request_queue_pop(request_queue* queue)
+{
+    request_node* node;
+
+    if (queue->head == NULL) {
+        return NULL;
+    }
+    node = queue->head;
+    if (node->next == NULL) {
+        queue->head = NULL;
+        queue->tail = NULL;
+    } else {
+        queue->head = node->next;
+    }
+    return node;
+}
+
+void request_queue_free(request_queue* queue)
+{
+    request_node* node;
+    request_node* temp;
+
+    node = queue->head;
+    while (node) {
+        temp = node->next;
+        request_node_free(node);
+        node = temp;
+    }
+    free(queue);
+}
+
+void parse_request_line(request_node* node, char* line_buf)
+{
+    int n;
+    char method[MAXLINE], uri[MAXLINE], version[MAXLINE];
+
+    n = sscanf(line_buf, "%s %s %s", method, uri, version);
+    if (n != 3) {
+        /* Bad request line */
+        node->method = NONE;
+        node->res->status_code = BAD_REQUEST;
+        node->stage = ABORT;
+        node->close = 1;
+    } else {
+        /* Parse request method */
+        if (strstr(method, "GET") == method)
+            node->method = GET;
+        else if (strstr(method, "POST") == method)
+            node->method = POST;
+        else if (strstr(method, "HEAD") == method)
+            node->method = HEAD;
         else {
-            strcpy(uri->path, path_start);
-            strncpy(uri->host, host_start, path_start - host_start);
+            node->method = NONE;
+            node->res->status_code = NOT_IMPLEMENTED;
+            node->stage = ABORT;
+            node->close = 1;
+            return;
+        }
+        /* Parse request version */
+        if (strstr(version, "HTTP/1.1") != version) {
+            node->res->status_code = VERSION_NOT_SUPPORT;
+            node->stage = ABORT;
+            node->close = 1;
+            return;
+        }
+        if (strlen(uri) > MAX_PATH_LENGTH - 100) {
+            node->res->status_code = URI_TOO_LARGE;
+            node->stage = ABORT;
+            node->close = 1;
+            return;
+        }
+        strcpy(node->uri, uri);
+        node->stage = HEADER;
+    }
+}
+
+void parse_request_header(request_node* node, char* line_buf)
+{
+    char token[MAXLINE];
+    if (line_buf[0] == '\0') {
+        /* \r\n read, current request ends */
+        if (node->body_size > 0) {
+            /* More message body data need to be received */
+            node->stage = BODY;
+            return;
+        } else {
+            /* Finish current request, put into queue */
+            if (node->method == POST && node->body_size == -1) {
+                node->res->status_code = LENGTH_REQUIRED;
+                node->stage = ABORT;
+                node->close = 1;
+                return;
+            }
+            /* Request parsing finished */
+            node->stage = DONE;
+            return;
         }
     }
+    node->header_num++;
+    if (node->header_num > MAX_HEADER_NUM) {
+        node->res->status_code = REQUEST_TOO_LARGE;
+        node->stage = ABORT;
+        node->close = 1;
+        return;
+    }
+    if (strstr(line_buf, "Connection:") == line_buf) {
+        sscanf(line_buf, "Connection: %s", token);
+        if (strcmp(token, "close") == 0 ||
+                strcmp(token, "Close") == 0)
+            node->close = 1;
+    } else if (strstr(line_buf, "Content-Length:") == line_buf) {
+        sscanf(line_buf, "Content-Length: %d",&(node->body_size));
+        if (node->body_size > MAX_BODY_SIZE) {
+            node->res->status_code = REQUEST_TOO_LARGE;
+            node->stage = ABORT;
+            node->close = 1;
+            return;
+        }
+        if (node->body_size < 0) {
+            node->res->status_code = BAD_REQUEST;
+            node->stage = ABORT;
+            node->close = 1;
+            return;
+        }
+    } else if (strstr(line_buf, "Accept:") == line_buf) {
+        sscanf(line_buf, "Accept: %[^\r^\n]",
+               node->headers.accept);
+    } else if (strstr(line_buf, "Accept-Charset:") == line_buf) {
+        sscanf(line_buf, "Accept-Charset: %[^\r^\n]",
+               node->headers.accept_charset);
+    } else if (strstr(line_buf, "Accept-Encoding:") == line_buf) {
+        sscanf(line_buf, "Accept-Encoding: %[^\r^\n]",
+               node->headers.accept_encoding);
+    } else if (strstr(line_buf, "Accept-Language:") == line_buf) {
+        sscanf(line_buf, "Accept-Language: %[^\r^\n]",
+               node->headers.accept_language);
+    } else if (strstr(line_buf, "Content-Type:") == line_buf) {
+        sscanf(line_buf, "Content-Type: %[^\r^\n]",
+               node->headers.content_type);
+    } else if (strstr(line_buf, "Cookie:") == line_buf) {
+        sscanf(line_buf, "Cookie: %[^\r^\n]",
+               node->headers.cookie);
+    } else if (strstr(line_buf, "Host:") == line_buf) {
+        sscanf(line_buf, "Host: %[^\r^\n]",
+               node->headers.host);
+    } else if (strstr(line_buf, "Referer:") == line_buf) {
+        sscanf(line_buf, "Referer: %[^\r^\n]",
+               node->headers.referer);
+    } else if (strstr(line_buf, "User-Agent:") == line_buf) {
+        sscanf(line_buf, "User-Agent: %[^\r^\n]",
+               node->headers.user_agent);
+    } else if (!strchr(line_buf, ':')) {
+        node->res->status_code = BAD_REQUEST;
+        node->stage = ABORT;
+        node->close = 1;
+        return;
+    }
+}
 
-    port_start = strchr(uri->host, ':');
-    if (port_start) {
-        uri->port = atoi(port_start + 1);
-        uri->host[port_start - uri->host] = '\0';
+void generate_error_response(request_node *node)
+{
+    response *res = NULL;
+    char body[MAXLINE], status_line[MAXLINE], content_len[MAXLINE];
+    response_line* temp_line;
+
+    res = node->res;
+    sprintf(body, "<html><title>Server Error</title>");
+    if (res->status_code == BAD_REQUEST) {
+        sprintf(status_line, "HTTP/1.1 %d %s\r\n",
+                res->status_code, "Bad Request");
+        sprintf(body, "%s%d: %s\r\n", body, res->status_code,
+                "Bad request, can't parse method or uri or version");
+    } else if (res->status_code == NOT_FOUND) {
+        sprintf(status_line, "HTTP/1.1 %d %s\r\n",
+                res->status_code, "Not Found");
+        sprintf(body, "%s%d: %s\r\n", body, res->status_code,
+                "Request content not found");
+    } else if (res->status_code == REQUEST_TIME_OUT) {
+        sprintf(status_line, "HTTP/1.1 %d %s\r\n",
+                res->status_code, "Request Time-out");
+        sprintf(body, "%s%d: %s\r\n", body, res->status_code,
+                "Request time out");
+    } else if (res->status_code == LENGTH_REQUIRED) {
+        sprintf(status_line, "HTTP/1.1 %d %s\r\n",
+                res->status_code, "Length Required");
+        sprintf(body, "%s%d: %s\r\n", body, res->status_code,
+                "Content-Length required for POST");
+    } else if (res->status_code == REQUEST_TOO_LARGE) {
+        sprintf(status_line, "HTTP/1.1 %d %s\r\n",
+                res->status_code, "Request Entity Too Large");
+        sprintf(body, "%s%d: %s\r\n", body, res->status_code,
+                "Request too large or request line too long");
+    } else if (res->status_code == URI_TOO_LARGE) {
+        sprintf(status_line, "HTTP/1.1 %d %s\r\n",
+                res->status_code, "Request-URI too large");
+        sprintf(body, "%s%d: %s\r\n", body, res->status_code,
+                "Request uri larger than server can handle");
+    } else if (res->status_code == INTERNAL_SERVER_ERROR) {
+        sprintf(status_line, "HTTP/1.1 %d %s\r\n",
+                res->status_code, "Internal Server Error");
+        sprintf(body, "%s%d: %s\r\n", body, res->status_code,
+                "Some bugs have crawled into the server");
+    } else if (res->status_code == NOT_IMPLEMENTED) {
+        sprintf(status_line, "HTTP/1.1 %d %s\r\n",
+                res->status_code, "Not Implemented");
+        sprintf(body, "%s%d: %s\r\n", body, res->status_code,
+                "Method not implemented");
+    } else if (res->status_code == SERVICE_UNAVAILABLE) {
+        sprintf(status_line, "HTTP/1.1 %d %s\r\n",
+                res->status_code, "Service unavailable");
+        sprintf(body, "%s%d: %s\r\n", body, res->status_code,
+                "Server under maintenance or too many connections");
+    } else if (res->status_code == VERSION_NOT_SUPPORT) {
+        sprintf(status_line, "HTTP/1.1 %d %s\r\n",
+                res->status_code, "HTTP Version not supported");
+        sprintf(body, "%s%d: %s\r\n", body, res->status_code,
+                "HTTP version not support by server");
     } else {
-        uri->port = 80;     //Default http port
-        if (path_start)
-            uri->host[path_start - host_start] = '\0';
+        sprintf(status_line, "HTTP/1.1 %d %s\r\n",
+                res->status_code, "Unknown error");
+        sprintf(body, "%s%d: %s\r\n", body, res->status_code,
+                "Unknown error");
     }
-    return 0;
-}
+    sprintf(content_len, "Content-Length: %d\r\n",
+            (int)strlen(body));
 
-int req_parse(request_t* self) {
-    char uri[REQ_BUF_SIZE];
-
-    if (sscanf(self->buf, "%s %s %s", self->method, uri, self->version) < 3) {
-        log_msg(L_ERROR, "Bad request line: %s\n", self->buf);
-        return -1;
+    temp_line = create_response_line(status_line);
+    if (temp_line == NULL) {
+        node->close = 1;
+        return;
     }
-    if (parse_uri(uri, &self->uri) == -1) {
-        log_msg(L_ERROR, "Bad uri: %s\n", uri);
-        return -1;
+    response_add_line(res, temp_line);
+    temp_line = create_response_line(content_len);
+    if (temp_line == NULL) {
+        node->close = 1;
+        return;
     }
-
-    return 0;
-}
-
-int req_connect_server(request_t* self) {
-    sockaddr_in_t serveraddr, clientaddr;
-
-    if ((self->server_fd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-        log_error("req_connect_server: socket() failed");
-        return -1;
+    response_add_line(res, temp_line);
+    if (node->close) {
+        temp_line = create_response_line("Connection: close\r\n");
+        if (temp_line == NULL)
+            return;
+        response_add_line(res, temp_line);
+    } else {
+        temp_line = create_response_line("Connection: keep-alive\r\n");
+        if (temp_line == NULL)
+            return;
+        response_add_line(res, temp_line);
     }
-
-    clientaddr = make_sockaddr_in(fake_ip, 0);
-    if (bind(self->server_fd, (struct sockaddr *)&clientaddr,
-            sizeof(clientaddr))) {
-        log_error("req_connect_server: Failed binding socket");
-        return -1;
+    temp_line = create_response_line("Content-Type: text/html\r\n");
+    if (temp_line == NULL) {
+        node->close = 1;
+        return;
     }
-
-    serveraddr = make_sockaddr_in(www_ip, SERVER_PORT);
-
-    if (connect(self->server_fd, (struct sockaddr *) &serveraddr,
-            sizeof(serveraddr)) < 0) {
-        log_error("req_connect_server: connect() failed");
-        return -1;
+    response_add_line(res, temp_line);
+    temp_line = create_response_line("\r\n");
+    if (temp_line == NULL) {
+        node->close = 1;
+        return;
     }
+    response_add_line(res, temp_line);
 
-    return 0;
-}
-
-int req_forward(request_t* self, int from_fd, int to_fd) {
-    int nbytes;
-
-    nbytes = read(from_fd, self->buf, REQ_BUF_SIZE);
-
-    if (nbytes == -1) {
-        log_error("req_forward: read error");
-        return -1;
+    res->body_size = strlen(body);
+    res->body_buf = (char *)malloc(res->body_size);
+    if (res->body_buf == NULL) {
+        fprintf(stderr, "No memory to allocate response body\n");
+        node->close = 1;
+        res->body_size = -1;
+        return;
     }
-
-    if (write(to_fd, self->buf, nbytes) == -1) {
-        log_error("req_forward: write error");
-        return -1;
-    }
-
-    return nbytes;
-}
-
-void req_finalize(request_t* self) {
-    close(self->client_fd);
-    if (self->server_fd)
-        close(self->server_fd);
+    memcpy(res->body_buf, body, res->body_size);
 }
