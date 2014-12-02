@@ -428,7 +428,9 @@ void handle_server_recv(proxy_session *session)
 void handle_client_send(proxy_session *session)
 {
     transaction_node *node;
+    message_line *cookie_line;
     int testi;
+    char cookie_buf[MAXLINE];
 
     node = session->queue->head;
     while (node && node->stage == READY) {
@@ -439,6 +441,15 @@ void handle_client_send(proxy_session *session)
                 parse_bitrates(session, node);
             }
         } else {
+            if (strcmp(node->extension, "f4m") == 0) {
+                sprintf(cookie_buf, "Set-Cookie: filename=%s\r\n",
+                        node->filename);
+                cookie_line = create_message_line(cookie_buf);
+                if (cookie_line != NULL) {
+                    cookie_line->next = node->response_msg->head->next;
+                    node->response_msg->head->next = cookie_line;
+                }
+            }
             testi = connection_send_msg(session->client_conn,node->response_msg);
             if (testi == 0) {
                 //TODO update log and throughput

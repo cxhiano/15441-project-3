@@ -243,6 +243,6 @@ void update_throughput(proxy_session *session, transaction_node *node)
     session->video->throughput = alpha * throughput +
                                  (1 - alpha) * session->video->throughput;
     sscanf(node->filename, "%dSeq%s", &bitrate, buf);
-    log_log("%lld %f %f %f %d %s %s", log_now, duration, throughput,
+    log_log("%lld %f %f %f %d %s %s\n", log_now, duration, throughput,
             session->video->throughput, bitrate, www_ip, node->filename);
 }
