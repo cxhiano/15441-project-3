@@ -147,6 +147,11 @@ void handle_proxy_session(proxy_session *session)
                             return;
                         }
                     }
+                    session->video = create_video();
+                    if (session->video == NULL) {
+                        session->close = 1;
+                        return;
+                    }
                     node->start_time = now();
                     node->stage = PROXY;
                 } else {
