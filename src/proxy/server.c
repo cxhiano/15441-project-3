@@ -1,116 +1,126 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
-#include <netinet/in.h>
-#include <sys/socket.h>
-#include <fcntl.h>
-#include <time.h>
-#include <errno.h>
 #include <string.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <errno.h>
+#include <sys/socket.h>
+#include <arpa/inet.h>
 #include "server.h"
-#include "request.h"
-#include "response.h"
+#include "transaction.h"
 #include "proxy.h"
 
-connection* create_http_connection(int conn_fd)
+proxy_session *create_session(int client_fd)
 {
-    connection* conn;
+    proxy_session *session;
 
-    conn = (connection *)malloc(sizeof(connection));
-    if (conn == NULL)
+    session = (proxy_session *)malloc(sizeof(proxy_session));
+    if (session == NULL)
         return NULL;
-    conn->conn_fd = conn_fd;
-    conn->buf_size = 0;
-    conn->proxy_fd = -1;
-    conn->proxy_buf_size = 0;
-    conn->current_request = NULL;
-    conn->queue = create_request_queue();
-    if (conn->queue == NULL) {
-        free(conn);
+    session->client_conn = create_connection(client_fd);
+    if (session->client_conn == NULL) {
+        free(session);
         return NULL;
     }
-    conn->close = 0;
-    conn->next = NULL;
+    session->server_conn = create_connection(-1);
+    if (session->server_conn == NULL) {
+        connection_free(session->client_conn);
+        free(session);
+        return NULL;
+    }
+    session->queue = create_transaction_queue();
+    if (session->queue == NULL) {
+        connection_free(session->client_conn);
+        connection_free(session->server_conn);
+        free(session);
+        return NULL;
+    }
+    session->video = NULL;
+    session->next = NULL;
+    session->close = 0;
 
-    return conn;
+    return session;
 }
 
-void connection_free(connection* conn)
+void session_free(proxy_session *session)
 {
-    close(conn->conn_fd);
-    if (conn->proxy_fd != -1)
-        close(conn->proxy_fd);
-    if (conn->current_request != NULL)
-        request_node_free(conn->current_request);
-    if (conn->queue != NULL)
-        request_queue_free(conn->queue);
-    free(conn);
+    if (session->client_conn != NULL) {
+        connection_free(session->client_conn);
+    }
+    if (session->server_conn != NULL) {
+        connection_free(session->server_conn);
+    }
+    if (session->queue != NULL) {
+        transaction_queue_free(session->queue);
+    }
+    if (session->video != NULL) {
+        free(session->video);
+    }
+    free(session);
 }
 
-conn_list* create_connection_list()
+session_list* create_session_list()
 {
-    conn_list* list;
+    session_list* list;
 
-    list = (conn_list *)malloc(sizeof(conn_list));
+    list = (session_list *)malloc(sizeof(session_list));
     if (list == NULL)
         return NULL;
-    list->size = 0;
     list->head = NULL;
     list->tail = NULL;
 
     return list;
 }
 
-void connection_list_add(conn_list* list, connection* conn)
+void session_list_add(session_list* list, proxy_session* session)
 {
     if (list->head == NULL) {
-        list->head = conn;
-        list->tail = conn;
+        list->head = session;
+        list->tail = session;
     } else {
-        list->tail->next = conn;
-        list->tail = conn;
+        list->tail->next = session;
+        list->tail = session;
     }
-    list->size++;
 }
 
-void connection_list_remove(conn_list* list, int conn_fd)
+void session_list_remove(session_list *list, proxy_session *session)
 {
-    connection* conn;
-    connection* temp;
+    proxy_session* sess;
+    proxy_session* temp;
 
     temp = NULL;
-    conn = list->head;
-    while (conn) {
-        if (conn->conn_fd == conn_fd) {
-            if (conn == list->head) {
-                list->head = conn->next;
-                if (conn == list->tail)
+    sess = list->head;
+    while (sess) {
+        if (sess == session) {
+            if (sess == list->head) {
+                list->head = sess->next;
+                if (sess == list->tail) {
                     list->tail = NULL;
-            } else if (conn == list->tail) {
+                }
+            } else if (sess == list->tail) {
                 list->tail = temp;
                 temp->next = NULL;
             } else {
-                temp->next = conn->next;
+                temp->next = sess->next;
             }
-            connection_free(conn);
-            list->size--;
+            session_free(sess);
             return;
         }
-        temp = conn;
-        conn = conn->next;
+        temp = sess;
+        sess = sess->next;
     }
 }
 
-void connection_list_free(conn_list* list)
+void session_list_free(session_list* list)
 {
-    connection* conn;
-    connection* temp;
+    proxy_session* sess;
+    proxy_session* temp;
 
-    conn = list->head;
-    while (conn) {
-        temp = conn->next;
-        connection_free(conn);
-        conn = temp;
+    sess = list->head;
+    while (sess) {
+        temp = sess->next;
+        session_free(sess);
+        sess = temp;
     }
     free(list);
 }
@@ -130,37 +140,38 @@ int nonblock(int sock)
 }
 
 int update_fdset(fd_set* readfds, fd_set* writefds, int listen_sock,
-                 conn_list* list)
+                 session_list* list)
 {
     int maxfd = 0;
-    connection* conn;
-    connection* temp;
+    proxy_session* session;
+    proxy_session* temp;
 
     FD_ZERO(readfds);
     FD_ZERO(writefds);
     FD_SET(listen_sock, readfds);
     maxfd = listen_sock;
-    conn = list->head;
-    while (conn) {
-        if (conn->close) {
-            temp = conn->next;
-            connection_list_remove(list, conn->conn_fd);
-            conn = temp;
+    session = list->head;
+    while (session) {
+        if (session->close) {
+            temp = session->next;
+            session_list_remove(list, session);
+            session = temp;
             continue;
         }
-        FD_SET(conn->conn_fd, readfds);
-        if (conn->queue->head != NULL && conn->queue->head->stage == READY)
-            FD_SET(conn->conn_fd, writefds);
-        if (conn->proxy_fd != -1) {
-            FD_SET(conn->proxy_fd, readfds);
-            if (conn->queue->head != NULL)
-                FD_SET(conn->proxy_fd, writefds);
+        FD_SET(session->client_conn->conn_fd, readfds);
+        if (session->queue->head != NULL &&
+                session->queue->head->stage == READY)
+            FD_SET(session->client_conn->conn_fd, writefds);
+        if (session->server_conn->conn_fd != -1) {
+            FD_SET(session->server_conn->conn_fd, readfds);
+            if (session->queue->head != NULL)
+                FD_SET(session->server_conn->conn_fd, writefds);
         }
-        if (conn->conn_fd > maxfd)
-            maxfd = conn->conn_fd;
-        if (conn->proxy_fd > maxfd)
-            maxfd = conn->proxy_fd;
-        conn = conn->next;
+        if (session->client_conn->conn_fd > maxfd)
+            maxfd = session->client_conn->conn_fd;
+        if (session->server_conn->conn_fd > maxfd)
+            maxfd = session->server_conn->conn_fd;
+        session = session->next;
     }
     return maxfd;
 }
@@ -199,90 +210,16 @@ int start_listen_sock(int port)
     return sock;
 }
 
-void run_server(int port)
-{
-    int sock;
-    fd_set readfds, writefds;
-    int maxfd, readynum, n;
-    conn_list* connection_list;
-    connection* conn;
-    connection* temp;
-
-    sock = start_listen_sock(port);
-    connection_list = create_connection_list();
-    if (connection_list == NULL) {
-        fprintf(stderr, "No memory to create connection list\n");
-        exit(EXIT_FAILURE);
-    }
-    /* Begin the main loop waiting for things to do */
-    while (1) {
-        maxfd = update_fdset(&readfds, &writefds, sock, connection_list);
-        if ((readynum =
-                    select(maxfd + 1, &readfds, &writefds, NULL, NULL)) < 0) {
-            fprintf(stderr, "Error on select\n");
-            continue;
-        }
-        /* Accept new http connections */
-        if (readynum > 0 && FD_ISSET(sock, &readfds)) {
-            readynum--;
-            accept_http_connection(sock, connection_list);
-        }
-        /* Traverse current connection list,
-         *          * see if any connection needs to be deal with */
-        conn = connection_list->head;
-        while (conn && readynum > 0) {
-            if (FD_ISSET(conn->conn_fd, &writefds)) {
-                /* If this connection has something to send */
-                readynum--;
-                handle_connection_send(conn);
-                /* If close after send, remove the connection */
-                if (conn->close) {
-                    fprintf(stderr, "Server closed the socket\n");
-                    temp = conn->next;
-                    connection_list_remove(connection_list, conn->conn_fd);
-                    conn = temp;
-                    continue;
-                }
-            }
-            if (FD_ISSET(conn->conn_fd, &readfds)) {
-                /* If this connection had something to recv */
-                readynum--;
-                if (conn->close) {
-                    conn = conn->next;
-                    continue;
-                }
-                n = http_recv(conn);
-                if (n == -1) {
-                    temp = conn->next;
-                    connection_list_remove(connection_list, conn->conn_fd);
-                    conn = temp;
-                    continue;
-                } else if (n == 0) {
-                    conn = conn->next;
-                    continue;
-                } else {
-                    conn->buf_size += n;
-                    handle_connection_recv(conn);
-                    handle_proxy_request(conn);
-                }
-            }
-            conn = conn->next;
-        }
-    }
-    close(sock);
-    connection_list_free(connection_list);
-}
-
-void accept_http_connection(int sock, conn_list* connection_list)
+void accept_http_connection(int sock, session_list* session_list)
 {
     int client;
     struct sockaddr_in client_addr;
     socklen_t client_size;
-    connection* conn;
+    proxy_session* session;
 
     client_size = sizeof(client_addr);
-    if ((client = accept(sock,
-                         (struct sockaddr *)&client_addr,&client_size))==-1) {
+    if ((client = accept(sock, (struct sockaddr *)&client_addr,
+                         &client_size)) == -1) {
         if (errno != EWOULDBLOCK && errno != EAGAIN)
             fprintf(stderr, "Error on accept\n");
         return;
@@ -292,244 +229,231 @@ void accept_http_connection(int sock, conn_list* connection_list)
         close(client);
         return;
     }
-    conn = create_http_connection(client);
-    if (conn == NULL) {
+    session = create_session(client);
+    if (session == NULL) {
         fprintf(stderr, "No memory to handle the new connection\n");
         close(client);
     } else {
-        connection_list_add(connection_list, conn);
+        session_list_add(session_list, session);
     }
 }
 
-int http_recv(connection* conn)
+void run_server(int port)
+{
+    int sock;
+    fd_set readfds, writefds;
+    int maxfd, readynum;
+    session_list* session_list;
+    proxy_session* session;
+    proxy_session* temp;
+
+    sock = start_listen_sock(port);
+    session_list = create_session_list();
+    if (session_list == NULL) {
+        fprintf(stderr, "No memory to create session list\n");
+        exit(EXIT_FAILURE);
+    }
+    /* Begin the main loop waiting for things to do */
+    while (1) {
+        maxfd = update_fdset(&readfds, &writefds, sock, session_list);
+        if ((readynum =
+                    select(maxfd + 1, &readfds, &writefds, NULL, NULL)) < 0) {
+            fprintf(stderr, "Error on select\n");
+            continue;
+        }
+        /* Accept new http connections */
+        if (readynum > 0 && FD_ISSET(sock, &readfds)) {
+            readynum--;
+            accept_http_connection(sock, session_list);
+        }
+        /* Traverse current connection list,
+         *          * see if any connection needs to be deal with */
+        session = session_list->head;
+        while (session && readynum > 0) {
+            if (FD_ISSET(session->client_conn->conn_fd, &writefds)) {
+                /* If this connection has something to send */
+                readynum--;
+                //TODO send responses
+                handle_client_send(session);
+                /* If close after send, remove the connection */
+                if (session->close) {
+                    temp = session->next;
+                    session_list_remove(session_list, session);
+                    session = temp;
+                    continue;
+                }
+            }
+            if (FD_ISSET(session->server_conn->conn_fd, &writefds)) {
+                readynum--;
+                if (session->close) {
+                    session = session->next;
+                    continue;
+                }
+                handle_server_send(session);
+                if (session->close) {
+                    temp = session->next;
+                    session_list_remove(session_list, session);
+                    session = temp;
+                    continue;
+                }
+            }
+            if (FD_ISSET(session->client_conn->conn_fd, &readfds)) {
+                /* If this connection had something to recv */
+                readynum--;
+                if (session->close) {
+                    session = session->next;
+                    continue;
+                }
+                handle_client_recv(session);
+                if (session->close) {
+                    temp = session->next;
+                    session_list_remove(session_list, session);
+                    session = temp;
+                    continue;
+                }
+            }
+            if (FD_ISSET(session->server_conn->conn_fd, &readfds)) {
+                readynum--;
+                if (session->close) {
+                    session = session->next;
+                    continue;
+                }
+                handle_server_recv(session);
+                if (session->close) {
+                    temp = session->next;
+                    session_list_remove(session_list, session);
+                    session = temp;
+                    continue;
+                }
+            }
+            session = session->next;
+        }
+    }
+    close(sock);
+    session_list_free(session_list);
+}
+
+void handle_client_recv(proxy_session *session)
 {
     int n;
-    n = recv(conn->conn_fd, conn->buf + conn->buf_size,
-             DEFAULT_BUF_SIZE - conn->buf_size, 0);
-    if (n == -1) {
-        if (errno != EWOULDBLOCK && errno != EAGAIN) {
-            fprintf(stderr, "Error on recv\n");
-            return -1;
-        }
-        return 0;
-    }
-    if (n == 0) {
-        return -1;
-    }
+    message *msg = NULL;
+    transaction_node *node = NULL;
 
-    return n;
+    n = connection_recv(session->client_conn);
+    if (n == -1) {
+        session->close = 1;
+        return;
+    } else if (n == 0) {
+        return;
+    } else {
+        while ((msg = connection_read_msg(session->client_conn)) != NULL) {
+            if ((node = create_transaction_from_msg(msg)) == NULL) {
+                message_free(msg);
+                session->close = 1;
+                return;
+            }
+            if (node->status_code != 0) {
+                generate_error_response(node);
+                if (node->response_msg == NULL) {
+                    transaction_node_free(node);
+                    session->close = 1;
+                    return;
+                }
+                node->stage = READY;
+                transaction_queue_add_node(session->queue, node);
+                break;
+            }
+            transaction_queue_add_node(session->queue, node);
+        }
+        handle_proxy_session(session);
+    }
 }
 
-void handle_connection_recv(connection* conn)
+void handle_server_send(proxy_session *session)
 {
-    char line_buf[MAXLINE];
+    transaction_node *node;
+    int testi;
 
-    while (1) {
-        if (conn->current_request == NULL) {
-            /* Start building a new request */
-            conn->current_request = create_request_node();
-            if (conn->current_request == NULL) {
-                fprintf(stderr, "No memory for new request\n");
-                conn->close = 1;
+    node = session->queue->head;
+    while (node) {
+        if (node->stage == PROXY) {
+            testi = connection_send_msg(session->server_conn,node->request_msg);
+            if (testi == 0) {
+                node->stage = DONE;
+            } else if (testi == -1) {
+                break;
+            } else if (testi == -2) {
+                session->close = 1;
                 return;
             }
         }
-        if (conn->current_request->stage == ABORT) {
-            /* Abort all the left message in the request */
-            request_queue_add_node(conn->queue,
-                                   conn->current_request);
-            conn->current_request = NULL;
-            return;
-        }
-        if (conn->current_request->stage == BODY) {
-            /* Receive message body of request */
-            read_message_body(conn);
-            if (conn->current_request->stage == DONE) {
-                /* Add request to queue */
-                request_queue_add_node(conn->queue,
-                                       conn->current_request);
-                conn->current_request = NULL;
-            }
-            if(conn->buf_size == 0)
-                break;
-            continue;
-        }
-        if (connection_readline(conn, line_buf) == 0) {
-            /* Can't read more lines from current buffer */
-            if (conn->buf_size == DEFAULT_BUF_SIZE) {
-                /* request head length > 8192 */
-                conn->current_request->res->status_code = REQUEST_TOO_LARGE;
-                conn->current_request->stage = ABORT;
-                conn->current_request->close = 1;
-                continue;
-            }
+        if (node->close)
             break;
-        }
-        if (conn->current_request->stage == START) {
-            /* Parse the start line of the request */
-            parse_request_line(conn->current_request, line_buf);
-        } else if (conn->current_request->stage == HEADER) {
-            /* Parse the headers of the request */
-            parse_request_header(conn->current_request, line_buf);
-            if (conn->current_request->stage == DONE) {
-                /* Add request to queue */
-                request_queue_add_node(conn->queue,
-                                       conn->current_request);
-                conn->current_request = NULL;
-            }
-        }
+        node = node->next;
     }
 }
 
-void read_message_body(connection* conn)
+void handle_server_recv(proxy_session *session)
 {
-    request_node* node = NULL;
-    int bytes_need, i;
+    int n;
+    message *msg = NULL;
+    transaction_node *node = NULL;
 
-    node = conn->current_request;
-    if (node->body_buf == NULL)
-        node->body_buf = (char *)malloc(node->body_size);
-    if (node->body_buf == NULL) {
-        fprintf(stderr, "No memory to store request body");
-        node->res->status_code = INTERNAL_SERVER_ERROR;
-        node->stage = ABORT;
-        node->close = 1;
+    n = connection_recv(session->server_conn);
+    if (n == -1) {
+        session->close = 1;
         return;
-    }
-    bytes_need = node->body_size - node->body_read;
-    if (bytes_need <= conn->buf_size) {
-        memcpy(node->body_buf + node->body_read, conn->buf, bytes_need);
-        node->body_read += bytes_need;
-        for (i = bytes_need; i < conn->buf_size; i++)
-            conn->buf[i-bytes_need] = conn->buf[i];
-        conn->buf_size = conn->buf_size - bytes_need;
-        node->stage = DONE;
+    } else if (n == 0) {
+        return;
     } else {
-        memcpy(node->body_buf + node->body_read, conn->buf, conn->buf_size);
-        node->body_read += conn->buf_size;
-        conn->buf_size = 0;
-    }
-}
-
-int connection_readline(connection* conn, char* line_buf)
-{
-    int i, j;
-
-    for (i = 1; i < conn->buf_size; i++) {
-        if (conn->buf[i-1] == '\r' && conn->buf[i] == '\n') {
-            /* Read a line */
-            memcpy(line_buf, conn->buf, i-1);
-            line_buf[i-1] = '\0';
-            /* Shift buffer to new data */
-            for (j = i+1; j < conn->buf_size; j++)
-                conn->buf[j-i-1] = conn->buf[j];
-            conn->buf_size = conn->buf_size - i - 1;
-            return 1;
-        }
-    }
-
-    return 0;
-}
-
-void handle_connection_send(connection* conn)
-{
-    request_node* node = NULL;
-    int bytes_sent;
-
-    bytes_sent = 0;
-    while (bytes_sent < DEFAULT_BUF_SIZE && conn->close == 0) {
-        node = conn->queue->head;
-        if (!node || node->stage != READY)
-            break;
-        /* Send response lines */
-        if (send_response_lines(conn, node, &bytes_sent) == 0) {
-            printf("send lines done\n");
-            return;
-        }
-        /* Send the message body of the response */
-        if (send_response_body(conn, node, &bytes_sent) == 0)
-            return;
-        /* Should close conn when finish sending node with close */
-        if (node->close) {
-            conn->close = 1;
-            return;
-        }
-        node = request_queue_pop(conn->queue);
-        request_node_free(node);
-    }
-}
-
-int send_response_lines(connection *conn, request_node *node, int *bytes_sent)
-{
-    response *res = NULL;
-    response_line* line = NULL;
-    int line_len, testi, i;
-
-    res = node->res;
-    line = res->head;
-    while (line) {
-        line_len = strlen(line->data);
-        testi = send(conn->conn_fd, line->data, line_len, 0);
-        if (testi == -1) {
-            if (errno != EWOULDBLOCK && errno != EAGAIN) {
-                fprintf(stderr, "Error on send\n");
-                conn->close = 1;
-                return 0;
+        while ((msg = connection_read_msg(session->server_conn)) != NULL) {
+            node = session->queue->head;
+            while (node) {
+                if (node->stage == DONE) {
+                    node->finish_time = now();
+                    node->response_msg = msg;
+                    node->stage= READY;
+                    break;
+                }
+                node = node->next;
             }
-            fprintf(stderr, "Send buffer full before sending\n");
-            return 0;
+            if (node == NULL) {
+                fprintf(stderr, "Discard server response message\n");
+                message_free(msg);
+            }
         }
-        if (testi < line_len) {
-            fprintf(stderr, "Send buffer full while sending\n");
-            for (i = testi; i <= line_len; i++)
-                line->data[i-testi] = line->data[i];
-            return 0;
-        }
-        *bytes_sent += line_len;
-        line = response_pop_line(res);
-        free(line);
-        line = res->head;
     }
-    if (*bytes_sent >= DEFAULT_BUF_SIZE) {
-        if (res->head == NULL && node->body_buf == NULL) {
-            if (node->close)
-                conn->close = 1;
-            node = request_queue_pop(conn->queue);
-            request_node_free(node);
-        }
-        return 0;
-    }
-
-    return 1;
 }
 
-int send_response_body(connection *conn, request_node *node, int *bytes_sent)
+void handle_client_send(proxy_session *session)
 {
-    int testi, n;
-    response *res = NULL;
+    transaction_node *node;
+    int testi;
 
-    res = node->res;
-    if (res->body_buf == NULL || res->body_sent == res->body_size)
-        return 1;
-    n = res->body_size - res->body_sent;
-    if (n > DEFAULT_BUF_SIZE - *bytes_sent)
-        n = DEFAULT_BUF_SIZE - *bytes_sent;
-    testi = send(conn->conn_fd, res->body_buf + res->body_sent, n, 0);
-    if (testi == -1) {
-        if (errno != EWOULDBLOCK && errno != EAGAIN) {
-            fprintf(stderr, "Error on send\n");
-            conn->close = 1;
-            return 0;
+    node = session->queue->head;
+    while (node && node->stage == READY) {
+        if (node->special) {
+            //TODO parse f4m
+        } else {
+            testi = connection_send_msg(session->client_conn,node->response_msg);
+            if (testi == 0) {
+                //TODO update log and throughput
+                if (node->start_time != 0) {
+                    update_throughput(session, node);
+                }
+            } else if (testi == -1) {
+                break;
+            } else if (testi == -2) {
+                session->close = 1;
+                return;
+            }
         }
-        fprintf(stderr, "Send buffer full before sending\n");
-        return 0;
+        if (node->close) {
+            session->close = 1;
+            return;
+        }
+        node = transaction_queue_pop(session->queue);
+        transaction_node_free(node);
+        node = session->queue->head;
     }
-    if (testi < n) {
-        fprintf(stderr, "Send buffer full while sending");
-        res->body_sent += testi;
-        return 0;
-    }
-    *bytes_sent += testi;
-    res->body_sent = res->body_size;
-    return 1;
 }

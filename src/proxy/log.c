@@ -35,4 +35,3 @@ void log_close()
 {
     fclose(log_fp);
 }
-
