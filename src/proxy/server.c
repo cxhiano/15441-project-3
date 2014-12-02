@@ -434,6 +434,10 @@ void handle_client_send(proxy_session *session)
     while (node && node->stage == READY) {
         if (node->special) {
             //TODO parse f4m
+            session->video = create_video();
+            if (session->video != NULL) {
+                parse_bitrates(session, node);
+            }
         } else {
             testi = connection_send_msg(session->client_conn,node->response_msg);
             if (testi == 0) {
