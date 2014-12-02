@@ -213,7 +213,6 @@ void parse_bitrates(proxy_session *session, transaction_node *node)
     bitrate_tag = node->response_msg->body_buf;
     while ((bitrate_tag = strstr(bitrate_tag, "bitrate=")) != NULL) {
         sscanf(bitrate_tag, "bitrate=\"%d\"", &bitrate);
-        printf("%d\n", bitrate);
         video_add_bitrate(session->video, bitrate);
         bitrate_tag++;
     }

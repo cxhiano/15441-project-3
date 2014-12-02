@@ -397,14 +397,11 @@ void handle_server_recv(proxy_session *session)
 {
     int n;
     message *msg = NULL;
-    message_line *line = NULL;
     transaction_node *node = NULL;
-    transaction_node *temp = NULL;
-    char token[MAXLINE];
 
     n = connection_recv(session->server_conn);
     if (n == -1) {
-        session->close = 1;
+	session->close = 1;
         return;
     } else if (n == 0) {
         return;
@@ -416,30 +413,6 @@ void handle_server_recv(proxy_session *session)
                     node->finish_time = now();
                     node->response_msg = msg;
                     node->stage= READY;
-                    line = msg->head;
-                    while (line) {
-                        if (strstr(line->data, "Connection:") == line->data) {
-                            sscanf(line->data, "Connection: %s", token);
-                            if (strcmp(token, "close") == 0 ||
-                                    strcmp(token, "Close") == 0) {
-                                connection_free(session->server_conn);
-                                session->server_conn = create_connection(-1);
-                                if (session->server_conn == NULL) {
-                                    session->close = 1;
-                                    return;
-                                }
-                                temp = node->next;
-                                while (temp) {
-                                    if (temp->stage == DONE) {
-                                        temp->stage = PROXY;
-                                    }
-                                    temp = temp->next;
-                                }
-                                break;
-                            }
-                        }
-                        line = line->next;
-                    }
                     break;
                 }
                 node = node->next;
@@ -498,4 +471,5 @@ void handle_client_send(proxy_session *session)
         transaction_node_free(node);
         node = session->queue->head;
     }
+    handle_proxy_session(session);
 }
