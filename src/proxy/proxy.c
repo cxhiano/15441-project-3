@@ -72,7 +72,6 @@ void handle_proxy_session(proxy_session *session)
     transaction_node *node;
     transaction_node *special_node;
     message_line *line;
-    message_line *set_cookie_line;
     char *cookie;
     char modified_line[MAXLINE];
     char filename[MAXLINE];
@@ -111,15 +110,6 @@ void handle_proxy_session(proxy_session *session)
                     sprintf(modified_line, "%s?%s", modified_line, node->query);
                 }
                 sprintf(line->data, "GET %s HTTP/1.1\r\n", modified_line);
-                sprintf(modified_line, "Set-Cookie: filename=%s\r\n",
-                        node->filename);
-                set_cookie_line = create_message_line(modified_line);
-                if (set_cookie_line == NULL) {
-                    session->close = 1;
-                    return;
-                }
-                set_cookie_line->next = line->next;
-                line->next = set_cookie_line;
                 node->stage = PROXY;
                 break;
             } else if (strstr(node->filename, "-Frag") != NULL &&
