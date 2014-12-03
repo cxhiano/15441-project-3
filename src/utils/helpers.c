@@ -40,18 +40,24 @@ char* loads_request(char* buf) {
 }
 
 int dumps_response(char* domain, char* ip, char* buf) {
+    question_t* q = create_struct(sizeof(question_t));
     resource_t* r = create_struct(sizeof(resource_t));
     message_t* msg = create_message();
     int nbytes;
     sockaddr_in_t addr;
 
     msg->header->AA = 1;
-    if (domain == NULL) {
+
+    msg->header->QDCOUNT = 1;
+    q->QTYPE = q->QCLASS = 1;
+    q->QNAME = domain;
+    list_add(msg->question, q);
+
+    if (ip == NULL) {
         msg->header->RCODE = 3;
         free(r);
     } else {
         msg->header->ANCOUNT = 1;
-
         r->NAME = domain;
         r->TYPE = r->CLASS = 1;
         r->TTL = 0;

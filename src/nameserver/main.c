@@ -121,7 +121,7 @@ void serve(int listen_fd) {
             if (domain == NULL || ip == NULL ||
                     strcmp(domain, "video.cs.cmu.edu") != 0) {
                 log_msg(L_DEBUG, "Invalid request from %s\n", from_ip);
-                nbytes = dumps_response(NULL, NULL, buf);
+                nbytes = dumps_response(domain, NULL, buf);
             } else {
                 log_msg(L_INFO, "%d %s %s %s\n", now(), from_ip, domain, ip);
 
@@ -165,8 +165,8 @@ int main(int argc, char* argv[]) {
         i = 1;
     }
 
-    log_mask = L_ERROR | L_INFO | L_DEBUG;
-    //set_log_file(argv[1]);
+    log_mask = L_ERROR | L_INFO;
+    set_log_file(argv[i]);
     if ((listen_fd = setup_dns_server(argv[i + 1], atoi(argv[i + 2]))) == -1)
         exit(1);
     if (get_server_list(argv[i + 3]) == -1)
