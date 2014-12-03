@@ -63,8 +63,13 @@ int dumps_response(char* domain, char* ip, char* buf) {
         r->TTL = 0;
         r->RDLENGTH = 4;
         inet_aton(ip, &addr.sin_addr);
+
         r->RDATA = malloc(4);
-        dumps_uint32(r->RDATA, addr.sin_addr.s_addr);
+        r->RDATA[0] = addr.sin_addr.s_addr & 0xFF;
+        r->RDATA[1] = (addr.sin_addr.s_addr >> 8) & 0xFF;
+        r->RDATA[2] = (addr.sin_addr.s_addr >> 16) & 0xFF;
+        r->RDATA[3] = (addr.sin_addr.s_addr >> 24) & 0xFF;
+
         list_add(msg->answer, r);
     }
 
@@ -85,7 +90,8 @@ char* loads_response(char* buf) {
         return NULL;
     }
 
-    addr.sin_addr.s_addr = loads_uint32(r->RDATA);
+    addr.sin_addr.s_addr = (r->RDATA[0] & 255) + (r->RDATA[1] << 8) +
+                           (r->RDATA[2] << 16) + (r->RDATA[3] << 24);
     free_message(msg);
 
     ip = inet_ntoa(addr.sin_addr);
