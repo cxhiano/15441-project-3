@@ -55,7 +55,7 @@ static char* loads_domain(char* buf) {
 
     while (buf[len])
         len += 1;
-    domain = malloc(len - 1);
+    domain = malloc(len);
     i = 0;
     while ((cnt = buf[i]) != 0) {
         if (i != 0)

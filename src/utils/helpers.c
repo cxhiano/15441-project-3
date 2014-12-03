@@ -6,11 +6,12 @@
 #include "message.h"
 #include "helpers.h"
 
-int dumps_request(char* domain, char* buf) {
+int dumps_request(int id, char* domain, char* buf) {
     question_t* q = create_struct(sizeof(question_t));
     message_t* msg = create_message();
     int nbytes;
 
+    msg->header->id = id;
     msg->header->QDCOUNT = 1;
     q->QTYPE = q->QCLASS = 1;
     q->QNAME = domain;
@@ -23,42 +24,20 @@ int dumps_request(char* domain, char* buf) {
     return nbytes;
 }
 
-char* loads_request(char* buf) {
-    message_t* msg = loads_message(buf);
-    question_t* r = list_get(msg->question, 0);
-    char* domain;
-
-    if (r == NULL) {
-        free_message(msg);
-        return NULL;
-    }
-
-    domain = r->QNAME;
-    free_message(msg);
-
-    return domain;
-}
-
-int dumps_response(char* domain, char* ip, char* buf) {
-    question_t* q = create_struct(sizeof(question_t));
+int dumps_response(message_t* msg, char* ip, char* buf) {
+    question_t* q = list_get(msg->question, 0);
     resource_t* r = create_struct(sizeof(resource_t));
-    message_t* msg = create_message();
     int nbytes;
     sockaddr_in_t addr;
 
     msg->header->AA = 1;
-
-    msg->header->QDCOUNT = 1;
-    q->QTYPE = q->QCLASS = 1;
-    q->QNAME = domain;
-    list_add(msg->question, q);
 
     if (ip == NULL) {
         msg->header->RCODE = 3;
         free(r);
     } else {
         msg->header->ANCOUNT = 1;
-        r->NAME = domain;
+        r->NAME = q->QNAME;
         r->TYPE = r->CLASS = 1;
         r->TTL = 0;
         r->RDLENGTH = 4;
@@ -74,7 +53,6 @@ int dumps_response(char* domain, char* ip, char* buf) {
     }
 
     nbytes = dumps_message(msg, buf);
-    free_message(msg);
 
     return nbytes;
 }

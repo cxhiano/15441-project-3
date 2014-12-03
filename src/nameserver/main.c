@@ -83,6 +83,8 @@ void serve(int listen_fd) {
     sockaddr_in_t from;
     socklen_t addr_len = sizeof(from);
     ssize_t nbytes;
+    message_t* msg;
+    question_t* q;
     char *domain, *ip, *from_ip;
     int i;
 
@@ -102,11 +104,16 @@ void serve(int listen_fd) {
             continue;
         } else {
             // Deserialize request
-            domain = loads_request(buf);
+            msg = loads_message(buf);
+            q = list_get(msg->question, 0);
+            if (q == NULL)
+                domain = NULL;
+            else
+                domain = q->QNAME;
 
             from_ip = inet_ntoa(from.sin_addr);
 
-            log_msg(L_DEBUG, "%s %s\n", from_ip, domain);
+            log_msg(L_DEBUG, "%s %s\n", from_ip, q->QNAME);
 
             if (domain != NULL) {
                 // Get ip of requested domain
@@ -121,12 +128,12 @@ void serve(int listen_fd) {
             if (domain == NULL || ip == NULL ||
                     strcmp(domain, "video.cs.cmu.edu") != 0) {
                 log_msg(L_DEBUG, "Invalid request from %s\n", from_ip);
-                nbytes = dumps_response(domain, NULL, buf);
+                nbytes = dumps_response(msg, NULL, buf);
             } else {
                 log_msg(L_INFO, "%d %s %s %s\n", now(), from_ip, domain, ip);
 
                 // Serialize response
-                nbytes = dumps_response(domain, ip, buf);
+                nbytes = dumps_response(msg, ip, buf);
             }
 
 
@@ -135,6 +142,7 @@ void serve(int listen_fd) {
                 log_error("serve: sendto() error");
 
             if (domain) free(domain);
+            free_message(msg);
         }
     }
 
@@ -165,7 +173,7 @@ int main(int argc, char* argv[]) {
         i = 1;
     }
 
-    log_mask = L_ERROR | L_INFO;
+    log_mask = L_ERROR | L_INFO; // | L_DEBUG;
     set_log_file(argv[i]);
     if ((listen_fd = setup_dns_server(argv[i + 1], atoi(argv[i + 2]))) == -1)
         exit(1);

@@ -12,6 +12,7 @@
 #define MAXBUF 8192
 
 int sock;
+int id;
 int addr_len = sizeof(sockaddr_in_t);
 sockaddr_in_t  dns_addr;
 
@@ -31,6 +32,8 @@ int init_mydns(const char *dns_ip, unsigned int dns_port, char* client_ip) {
         return -1;
     }
 
+    id = 0;
+
     return 0;
 }
 
@@ -42,7 +45,7 @@ int resolve(const char *node, const char *service,
     char buf[MAXBUF];
     int i;
 
-    nbytes = dumps_request((char*)node, buf);
+    nbytes = dumps_request(id++, (char*)node, buf);
 
     if (sendto(sock, buf, nbytes, 0, (struct sockaddr *)&dns_addr,
             addr_len) == -1) {
