@@ -26,6 +26,6 @@ tar:
 	(make clean; cd ..; tar cvf 15-441-project-3.tar 15-441-project-3)
 
 submit:
-	-git tag -d checkpoint-1
-	git tag checkpoint-1
+	-git tag -d checkpoint-2
+	git tag checkpoint-2
 	make tar

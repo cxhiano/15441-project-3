@@ -36,7 +36,6 @@ int main(int argc, char* argv[])
         fprintf(stdout, "Invalid DNS port: %s\n", argv[6]);
         exit(EXIT_FAILURE);
     }
-    init_mydns(dns_ip, dns_port);
     /* Initialize proxy server */
     alpha = atof(argv[2]);
     if (alpha < 0 || alpha > 1) {
@@ -53,6 +52,7 @@ int main(int argc, char* argv[])
         exit(EXIT_FAILURE);
     }
     strcpy(fake_ip, argv[4]);
+    init_mydns(dns_ip, dns_port, fake_ip);
     if (argc > 7) {
         if (strlen(argv[7]) > 31) {
             fprintf(stdout, "Fake IP too long: %s\n", argv[7]);

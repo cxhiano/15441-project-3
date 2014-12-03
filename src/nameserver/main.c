@@ -156,6 +156,7 @@ int main(int argc, char* argv[]) {
     }
 
     log_mask = L_ERROR | L_INFO | L_DEBUG;
+    set_log_file(argv[1]);
     if ((listen_fd = setup_dns_server(argv[i + 1], atoi(argv[i + 2]))) == -1)
         exit(1);
     if (get_server_list(argv[i + 3]) == -1)
@@ -163,7 +164,6 @@ int main(int argc, char* argv[]) {
     if (lsa_init(argv[i + 4]) == -1)
         exit(1);
 
-    print_graph();
     serve(listen_fd);
 
     return 0;

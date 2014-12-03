@@ -9,10 +9,11 @@
  *
  * @param  dns_ip  The IP address of the DNS server.
  * @param  dns_port  The port number of the DNS server.
+ * @param  client_ip The IP address of the client
  *
  * @return 0 on success, -1 otherwise
  */
-int init_mydns(const char *dns_ip, unsigned int dns_port);
+int init_mydns(const char *dns_ip, unsigned int dns_port, char* client_ip);
 
 
 /**

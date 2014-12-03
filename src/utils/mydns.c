@@ -1,3 +1,4 @@
+#include <arpa/inet.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -14,11 +15,19 @@ int sock;
 int addr_len = sizeof(sockaddr_in_t);
 sockaddr_in_t  dns_addr;
 
-int init_mydns(const char *dns_ip, unsigned int dns_port) {
+int init_mydns(const char *dns_ip, unsigned int dns_port, char* client_ip) {
+    sockaddr_in_t clientaddr;
+
     dns_addr = make_sockaddr_in(dns_ip, dns_port);
 
     if ((sock = socket(AF_INET, SOCK_DGRAM, 0)) == -1) {
-        perror("init_mydns socket()");
+        log_error("init_mydns socket()");
+        return -1;
+    }
+
+    clientaddr = make_sockaddr_in(client_ip, 0);
+    if (bind(sock, (struct sockaddr *)&clientaddr, sizeof(clientaddr))) {
+        log_error("init_mydns: bind() error");
         return -1;
     }
 
