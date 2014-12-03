@@ -23,7 +23,7 @@ clean:
 	cd src/utils; make clean
 
 tar:
-	(make clean; cd ..; tar cvf 15-441-project-3.tar 15-441-project-3)
+	(make clean; cd ..; cp -r 15441-project-3 handin; tar cvf project3.tar handin; rm -rvf handin)
 
 submit:
 	-git tag -d checkpoint-2
