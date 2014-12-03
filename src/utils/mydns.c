@@ -49,7 +49,7 @@ int resolve(const char *node, const char *service,
 
     if (sendto(sock, buf, nbytes, 0, (struct sockaddr *)&dns_addr,
             addr_len) == -1) {
-        perror("resolve error: sendto()");
+        log_error("resolve error: sendto()");
         return -1;
     }
 
@@ -57,11 +57,11 @@ int resolve(const char *node, const char *service,
     for (i = 0; i < nbytes; ++i) {
         log_msg(L_ERROR, "%x ", buf[i] & 255);
         if (i % 2 == 1)
-            log_msg(L_ERROR, "\n");
+            log_msg(L_DEBUG, "\n");
     }
     ip = loads_response(buf);
     if (ip == NULL) return -1;
-    log_msg(L_ERROR, "%s\n", ip);
+    log_msg(L_DEBUG, "%s\n", ip);
 
     *res = make_addrinfo(ip, port);
 

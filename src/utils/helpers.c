@@ -31,6 +31,7 @@ int dumps_response(message_t* msg, char* ip, char* buf) {
     sockaddr_in_t addr;
 
     msg->header->AA = 1;
+    msg->header->QR = 1;
 
     if (ip == NULL) {
         msg->header->RCODE = 3;
