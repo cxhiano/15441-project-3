@@ -6,10 +6,10 @@
 #include "../utils/list.h"
 #include "../utils/log.h"
 
-int rr_pointer = -1;
+int rr_pointer = 0;
 
 char* round_robin(char* domain) {
-    rr_pointer = (rr_pointer + 1) % servers->len;
+    rr_pointer = (rr_pointer + servers->len - 1) % servers->len;
     return servers->get(servers, rr_pointer);
 }
 
