@@ -84,10 +84,20 @@ void serve(int listen_fd) {
     socklen_t addr_len = sizeof(from);
     ssize_t nbytes;
     char *domain, *ip, *from_ip;
+    int i;
 
     while (1) {
         nbytes = recvfrom(listen_fd, buf, MAXBUF, 0, (struct sockaddr*)&from,
                           &addr_len);
+
+        /*
+        log_msg(L_DEBUG, "%d:\n", nbytes);
+        for (i = 0; i < nbytes; ++i) {
+            log_msg(L_DEBUG, "0x%x ", buf[i]);
+            if (i % 2 == 1)
+                log_msg(L_DEBUG, "\n", buf[i]);
+        }
+        */
 
         if (nbytes < 0) {
             log_error("serve: recv() error");
@@ -97,6 +107,8 @@ void serve(int listen_fd) {
             domain = loads_request(buf);
 
             from_ip = inet_ntoa(from.sin_addr);
+
+            log_msg(L_DEBUG, "%s %s\n", from_ip, domain);
 
             if (domain != NULL) {
                 // Get ip of requested domain
@@ -156,7 +168,7 @@ int main(int argc, char* argv[]) {
     }
 
     log_mask = L_ERROR | L_INFO | L_DEBUG;
-    set_log_file(argv[1]);
+    //set_log_file(argv[1]);
     if ((listen_fd = setup_dns_server(argv[i + 1], atoi(argv[i + 2]))) == -1)
         exit(1);
     if (get_server_list(argv[i + 3]) == -1)
@@ -164,6 +176,7 @@ int main(int argc, char* argv[]) {
     if (lsa_init(argv[i + 4]) == -1)
         exit(1);
 
+    print_graph();
     serve(listen_fd);
 
     return 0;

@@ -4,8 +4,8 @@
 #include "message.h"
 
 static void dumps_uint16(char* buf, uint16_t b) {
-    buf[0] = b & 0xFF;
-    buf[1] = (b >> 8) & 0xFF;
+    buf[1] = b & 0xFF;
+    buf[0] = (b >> 8) & 0xFF;
 }
 
 static inline uint16_t loads_uint16(char* buf) {
@@ -13,10 +13,10 @@ static inline uint16_t loads_uint16(char* buf) {
 }
 
 static void dumps_uint32(char* buf, uint32_t b) {
-    buf[0] = b & 0xFF;
-    buf[1] = (b >> 8) & 0xFF;
-    buf[2] = (b >> 16) & 0xFF;
-    buf[3] = (b >> 24) & 0xFF;
+    buf[3] = b & 0xFF;
+    buf[2] = (b >> 8) & 0xFF;
+    buf[1] = (b >> 16) & 0xFF;
+    buf[0] = (b >> 24) & 0xFF;
 }
 
 static inline uint32_t loads_uint32(char* buf) {
@@ -27,10 +27,47 @@ static void dumps_string(char* buf, char* str, int len) {
     strncpy(buf, str, len);
 }
 
+static int dumps_domain(char* buf, char* domain) {
+    int len = strlen(domain);
+    int i, cnt;
+
+    for (i = 0; i < len; ++i)
+        buf[i + 1] = domain[i];
+    buf[len + 1] = '\0';
+    cnt = 0;
+    for (i = len; i >= 0; --i)
+        if (i == 0 || buf[i] == '.') {
+            buf[i] = cnt;
+            cnt = 0;
+        } else cnt += 1;
+    return len + 1;
+}
+
 static char* loads_string(char* buf, int len) {
     char* name = malloc(buf[0]);
     strncpy(name, buf, len);
     return name;
+}
+
+static char* loads_domain(char* buf) {
+    int len = 0, i, j, cnt;
+    char* domain;
+
+    while (buf[len])
+        len += 1;
+    domain = malloc(len - 1);
+    i = 0;
+    while ((cnt = buf[i]) != 0) {
+        if (i != 0)
+            domain[i - 1] = '.';
+        for (j = i + 1; j < i + 1 + cnt; ++j)
+            domain[j - 1] = buf[j];
+        i += cnt + 1;
+    }
+    domain[len - 1] = '\0';
+
+    return domain;
+
 }
 
 void* create_struct(int size) {
@@ -79,10 +116,9 @@ header_t* loads_header(char* buf) {
 }
 
 int dumps_question(question_t* q, char* buf) {
-    int len = strlen(q->QNAME) + 1;
+    int len;
 
-    buf[0] = len;
-    dumps_string(buf + 1, q->QNAME, len);
+    len = dumps_domain(buf, q->QNAME);
 
     dumps_uint16(buf + len + 1, q->QTYPE);
     dumps_uint16(buf + len + 3, q->QCLASS);
@@ -92,9 +128,10 @@ int dumps_question(question_t* q, char* buf) {
 
 question_t* loads_question(char* buf) {
     question_t* q = create_struct(sizeof(question_t));
-    int len = (unsigned char)buf[0];
+    int len;
 
-    q->QNAME = loads_string(buf + 1, len);
+    q->QNAME = loads_domain(buf);
+    len = 1 + strlen(q->QNAME);
 
     q->QTYPE = loads_uint16(buf + len + 1);
     q->QCLASS = loads_uint16(buf + len + 3);
