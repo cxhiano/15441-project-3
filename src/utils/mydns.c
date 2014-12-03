@@ -40,6 +40,7 @@ int resolve(const char *node, const char *service,
     int port = atoi(service);
     int nbytes;
     char buf[MAXBUF];
+    int i;
 
     nbytes = dumps_request((char*)node, buf);
 
@@ -50,8 +51,14 @@ int resolve(const char *node, const char *service,
     }
 
     nbytes = recv(sock, buf, MAXBUF, 0);
+    for (i = 0; i < nbytes; ++i) {
+        log_msg(L_ERROR, "%x ", buf[i] & 255);
+        if (i % 2 == 1)
+            log_msg(L_ERROR, "\n");
+    }
     ip = loads_response(buf);
     if (ip == NULL) return -1;
+    log_msg(L_ERROR, "%s\n", ip);
 
     *res = make_addrinfo(ip, port);
 

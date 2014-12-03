@@ -142,10 +142,9 @@ question_t* loads_question(char* buf) {
 }
 
 int dumps_resource(resource_t* r, char* buf) {
-    int len = strlen(r->NAME);
+    int len;
 
-    buf[0] = len;
-    dumps_string(buf + 1, r->NAME, len);
+    len = dumps_domain(buf, r->NAME);
 
     dumps_uint16(buf + len + 1, r->TYPE);
     dumps_uint16(buf + len + 3, r->CLASS);
@@ -158,9 +157,10 @@ int dumps_resource(resource_t* r, char* buf) {
 
 resource_t* loads_resource(char* buf) {
     resource_t* r = create_struct(sizeof(resource_t));
-    int len = (unsigned char)buf[0];
+    int len;
 
-    r->NAME = loads_string(buf + 1, len);
+    r->NAME = loads_domain(buf);
+    len = 1 + strlen(r->NAME);
 
     r->TYPE = loads_uint16(buf + len + 1);
     r->CLASS = loads_uint16(buf + len + 3);
