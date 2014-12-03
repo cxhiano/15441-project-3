@@ -9,7 +9,7 @@ static void dumps_uint16(char* buf, uint16_t b) {
 }
 
 static inline uint16_t loads_uint16(char* buf) {
-    return *(uint16_t*)buf;
+    return buf[1] & 255 + (buf[0] << 8);
 }
 
 static void dumps_uint32(char* buf, uint32_t b) {
@@ -20,7 +20,7 @@ static void dumps_uint32(char* buf, uint32_t b) {
 }
 
 static inline uint32_t loads_uint32(char* buf) {
-    return *(uint32_t*)buf;
+    return buf[3] & 255 + (buf[2] << 8) + (buf[3] << 16) + (buf[4] << 24);
 }
 
 static void dumps_string(char* buf, char* str, int len) {

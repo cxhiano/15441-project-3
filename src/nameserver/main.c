@@ -90,14 +90,12 @@ void serve(int listen_fd) {
         nbytes = recvfrom(listen_fd, buf, MAXBUF, 0, (struct sockaddr*)&from,
                           &addr_len);
 
-        /*
         log_msg(L_DEBUG, "%d:\n", nbytes);
         for (i = 0; i < nbytes; ++i) {
             log_msg(L_DEBUG, "0x%x ", buf[i]);
             if (i % 2 == 1)
                 log_msg(L_DEBUG, "\n", buf[i]);
         }
-        */
 
         if (nbytes < 0) {
             log_error("serve: recv() error");
