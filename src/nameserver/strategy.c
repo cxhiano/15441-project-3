@@ -38,8 +38,8 @@ int lsa_init(char* lsa_file) {
     char sender[MAXBUF];
     int ts;
     FILE* fp;
-    node_t* node;
-    item_t* item;
+    node_t* node, *node2;
+    item_t* item, *item2;
     char* ip;
     distvector_t* dv;
 
@@ -57,6 +57,14 @@ int lsa_init(char* lsa_file) {
             node = create_node(G, sender);
         // Update neighbor information of sender in graph
         update_node(node, ts, parse_neighbors(neighbors));
+    }
+
+    ITER_LIST(item, G->nodes) {
+        node = item->content;
+        ITER_LIST(item2, node->neighbors) {
+            node2 = item2->content;
+            add_neighbor(node2, node);
+        }
     }
 
     ITER_LIST(item, servers) {
