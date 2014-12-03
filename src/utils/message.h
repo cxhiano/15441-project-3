@@ -4,6 +4,11 @@
 #include <stdint.h>
 #include "list.h"
 
+void dumps_uint16(char* buf, uint16_t b);
+uint16_t loads_uint16(char* buf);
+void dumps_uint32(char* buf, uint32_t b);
+uint32_t loads_uint32(char* buf);
+
 /**
  * Create a struct of given size and initialize it to all 0s
  */

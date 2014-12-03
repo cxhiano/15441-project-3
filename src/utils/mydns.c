@@ -54,7 +54,6 @@ int resolve(const char *node, const char *service,
     if (ip == NULL) return -1;
 
     *res = make_addrinfo(ip, port);
-    free(ip);
 
     return 0;
 }

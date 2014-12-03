@@ -3,28 +3,28 @@
 #include <stdlib.h>
 #include "message.h"
 
-static void dumps_uint16(char* buf, uint16_t b) {
+inline void dumps_uint16(char* buf, uint16_t b) {
     buf[1] = b & 0xFF;
     buf[0] = (b >> 8) & 0xFF;
 }
 
-static inline uint16_t loads_uint16(char* buf) {
-    return buf[1] & 255 + (buf[0] << 8);
+inline uint16_t loads_uint16(char* buf) {
+    return (buf[1] & 255) + (buf[0] << 8);
 }
 
-static void dumps_uint32(char* buf, uint32_t b) {
+inline void dumps_uint32(char* buf, uint32_t b) {
     buf[3] = b & 0xFF;
     buf[2] = (b >> 8) & 0xFF;
     buf[1] = (b >> 16) & 0xFF;
     buf[0] = (b >> 24) & 0xFF;
 }
 
-static inline uint32_t loads_uint32(char* buf) {
-    return buf[3] & 255 + (buf[2] << 8) + (buf[3] << 16) + (buf[4] << 24);
+inline uint32_t loads_uint32(char* buf) {
+    return (buf[3] & 255) + (buf[2] << 8) + (buf[1] << 16) + (buf[0] << 24);
 }
 
 static void dumps_string(char* buf, char* str, int len) {
-    strncpy(buf, str, len);
+    memcpy(buf, str, len);
 }
 
 static int dumps_domain(char* buf, char* domain) {
@@ -44,9 +44,9 @@ static int dumps_domain(char* buf, char* domain) {
 }
 
 static char* loads_string(char* buf, int len) {
-    char* name = malloc(buf[0]);
-    strncpy(name, buf, len);
-    return name;
+    char* str = malloc(len);
+    memcpy(str, buf, len);
+    return str;
 }
 
 static char* loads_domain(char* buf) {
