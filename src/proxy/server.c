@@ -348,6 +348,7 @@ void handle_client_recv(proxy_session *session)
         return;
     } else {
         while ((msg = connection_read_msg(session->client_conn)) != NULL) {
+            fprintf(stderr, "%s", msg->head->data);
             if ((node = create_transaction_from_msg(msg)) == NULL) {
                 message_free(msg);
                 session->close = 1;
@@ -378,6 +379,7 @@ void handle_server_send(proxy_session *session)
     node = session->queue->head;
     while (node) {
         if (node->stage == PROXY) {
+            fprintf(stderr, "%s", node->request_msg->head->data);
             testi = connection_send_msg(session->server_conn,node->request_msg);
             if (testi == 0) {
                 node->stage = DONE;
@@ -423,6 +425,7 @@ void handle_server_recv(proxy_session *session)
         return;
     } else {
         while ((msg = connection_read_msg(session->server_conn)) != NULL) {
+            fprintf(stderr, "%s", msg->head->data);
             node = session->queue->head;
             while (node) {
                 if (node->stage == DONE) {
@@ -450,6 +453,7 @@ void handle_client_send(proxy_session *session)
 
     node = session->queue->head;
     while (node && node->stage == READY) {
+        fprintf(stderr, "send %s", node->filename);
         if (node->special) {
             parse_bitrates(node);
         } else {
