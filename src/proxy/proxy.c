@@ -146,6 +146,7 @@ void handle_proxy_session(proxy_session *session)
                     node->stage = PROXY;
                 } else {
                     sscanf(node->filename, "%dSeg%s", &bitrate, filename);
+                    fprintf(stderr, "%d\t%s\n", bitrate, filename);
                     bitrate = 0;
                     for (i = 0; i < session->video->bitrate_num; i++) {
                         if (1.5 * session->video->bitrates[i] <=
