@@ -59,6 +59,7 @@ int resolve(const char *node, const char *service,
         if (i % 2 == 1)
             log_msg(L_DEBUG, "\n");
     }
+
     ip = loads_response(buf);
     if (ip == NULL) return -1;
     log_msg(L_DEBUG, "%s\n", ip);
