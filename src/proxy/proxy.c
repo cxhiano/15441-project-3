@@ -151,7 +151,6 @@ void handle_proxy_session(proxy_session *session)
                         if (1.5 * session->video->bitrates[i] <=
 								session->video->throughput &&
                                 session->video->bitrates[i] > bitrate) {
-							fprintf(stderr, "TPT%f bitrate%d\n", session->video->throughput, session->video->bitrates[i]);
                             bitrate = session->video->bitrates[i];
                         }
                     }
