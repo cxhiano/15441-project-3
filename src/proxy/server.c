@@ -341,6 +341,7 @@ void handle_client_recv(proxy_session *session)
 
     n = connection_recv(session->client_conn);
     if (n == -1) {
+        fprintf(stderr, "Client close the connection\n");
         session->close = 1;
         return;
     } else if (n == 0) {

@@ -115,6 +115,7 @@ void handle_proxy_session(proxy_session *session)
             } else if (strstr(node->filename, "-Frag") != NULL &&
                        node->method == GET) {
                 if (session->video == NULL) {
+                    fprintf(stderr, "No video info\n");
                     cookie = strstr(node->cookie, "filename=");
                     if (cookie != NULL) {
                         filename[0] = '\0';
