@@ -161,7 +161,14 @@ void handle_proxy_session(proxy_session *session)
                         sprintf(node->filename, "%dSeg%s", bitrate, filename);
                         sprintf(line->data, "GET %s HTTP/1.1\r\n",
                                 modified_line);
-                    }
+                    } else {
+                        line = node->request_msg->head;
+                        sprintf(modified_line, "%s%dSeg%s", node->path, 10,
+                                filename);
+                        sprintf(node->filename, "%dSeg%s", 10, filename);
+                        sprintf(line->data, "GET %s HTTP/1.1\r\n",
+                                modified_line);
+					}
                     node->start_time = now();
                     node->stage = PROXY;
                 }
