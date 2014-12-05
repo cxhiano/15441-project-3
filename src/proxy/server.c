@@ -352,14 +352,12 @@ void handle_client_recv(proxy_session *session)
             fprintf(stderr, "%s", msg->head->data);
             if ((node = create_transaction_from_msg(msg)) == NULL) {
                 message_free(msg);
-                session->close = 1;
                 return;
             }
             if (node->status_code != 0) {
                 generate_error_response(node);
                 if (node->response_msg == NULL) {
                     transaction_node_free(node);
-                    session->close = 1;
                     return;
                 }
                 node->stage = READY;
@@ -389,7 +387,6 @@ void handle_server_send(proxy_session *session)
                 break;
             } else if (testi == -2) {
                 fprintf(stderr, "Worst case error\n");
-                session->close = 1;
                 return;
             }
         }
@@ -411,7 +408,6 @@ void handle_server_recv(proxy_session *session)
 		connection_free(session->server_conn);
 		session->server_conn = create_connection(-1);
 		if (session->server_conn == NULL) {
-			session->close = 1;
 			return;
 		}
 		while (connect_to_server(session->server_conn) == -1) {
@@ -480,11 +476,9 @@ void handle_client_send(proxy_session *session)
             } else if (testi == -1) {
                 break;
             } else if (testi == -2) {
-                session->close = 1;
                 return;
             }
             if (node->close) {
-                session->close = 1;
                 return;
             }
         }

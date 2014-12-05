@@ -89,7 +89,6 @@ void handle_proxy_session(proxy_session *session)
             fprintf(stderr, "%s\n", node->filename);
             if (session->server_conn->conn_fd == -1) {
                 if (connect_to_server(session->server_conn) == -1) {
-                    session->close = 1;
                     return;
                 }
             }
@@ -97,7 +96,6 @@ void handle_proxy_session(proxy_session *session)
                     node->method == GET) {
                 special_node = transaction_node_clone(node);
                 if (special_node == NULL) {
-                    session->close = 1;
                     return;
                 }
                 special_node->special = 1;
@@ -130,7 +128,6 @@ void handle_proxy_session(proxy_session *session)
                         if (strlen(filename) > 0) {
                             special_node = transaction_node_clone(node);
                             if (special_node == NULL) {
-                                session->close = 1;
                                 return;
                             }
                             special_node->special = 1;
