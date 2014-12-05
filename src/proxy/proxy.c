@@ -154,6 +154,7 @@ void handle_proxy_session(proxy_session *session)
                             bitrate = session->video->bitrates[i];
                         }
                     }
+                    fprintf(stdout, "%d\t%f\n", bitrate, session->video->throughput);
                     if (bitrate != 0) {
                         line = node->request_msg->head;
                         sprintf(modified_line, "%s%dSeg%s", node->path, bitrate,
