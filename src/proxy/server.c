@@ -160,7 +160,8 @@ int update_fdset(fd_set* readfds, fd_set* writefds, int listen_sock,
         }
         FD_SET(session->client_conn->conn_fd, readfds);
         if (session->queue->head != NULL &&
-                session->queue->head->stage == READY)
+                session->queue->head->stage == READY &&
+                session->queue->tail->stage == READY)
             FD_SET(session->client_conn->conn_fd, writefds);
         if (session->server_conn->conn_fd != -1) {
             FD_SET(session->server_conn->conn_fd, readfds);
