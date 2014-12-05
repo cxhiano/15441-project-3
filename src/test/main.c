@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <arpa/inet.h>
 #include "../utils/net.h"
 #include "../utils/mydns.h"
 #include "../utils/message.h"
@@ -46,9 +47,13 @@ void test_message() {
 
 void test_dns() {
     struct addrinfo *result;
+    sockaddr_in_t* addr;
+
     init_mydns("127.0.0.1", 12345, "127.0.0.1");
     printf("%d\n", resolve("video.cs.cmu.edu", "8080", NULL, &result));
 
+    addr = (sockaddr_in_t*)(result->ai_addr);
+    printf("ip addr: %s\n", inet_ntoa(addr->sin_addr));
 }
 
 int main() {
