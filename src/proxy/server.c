@@ -383,9 +383,11 @@ void handle_server_send(proxy_session *session)
             testi = connection_send_msg(session->server_conn,node->request_msg);
             if (testi == 0) {
                 node->stage = DONE;
+                break;
             } else if (testi == -1) {
                 break;
             } else if (testi == -2) {
+                fprintf(stderr, "Worst case error\n");
                 session->close = 1;
                 return;
             }

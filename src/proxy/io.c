@@ -174,7 +174,6 @@ int connection_send_msg(connection *conn, message *msg)
     int line_len, testi, i;
 
     line = msg->head;
-    fprintf(stderr, "%s", line->data);
     while (line) {
         line_len = strlen(line->data);
         testi = send(conn->conn_fd, line->data, line_len, 0);
