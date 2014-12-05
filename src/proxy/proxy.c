@@ -194,6 +194,7 @@ int connect_to_server(connection *conn)
 
     if ((conn->conn_fd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
         fprintf(stderr, "Fail to create socket\n");
+        conn->conn_fd = -1;
         return -1;
     }
     clientaddr = make_sockaddr_in(fake_ip, 0);

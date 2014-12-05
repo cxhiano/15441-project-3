@@ -414,10 +414,12 @@ void handle_server_recv(proxy_session *session)
 			return;
 		}
 		while (connect_to_server(session->server_conn) == -1) {
+            fprintf(stderr, "Reconnect server\n");
 		}
         node = session->queue->head;
 		while (node) {
 			if (node->stage == DONE) {
+                fprintf(stderr, "re proxy requests\n");
 				node->stage = PROXY;
 			}
 			node = node->next;
