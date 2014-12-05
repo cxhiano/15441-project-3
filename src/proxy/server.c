@@ -451,11 +451,7 @@ void handle_client_send(proxy_session *session)
     node = session->queue->head;
     while (node && node->stage == READY) {
         if (node->special) {
-            //TODO parse f4m
-            session->video = create_video();
-            if (session->video != NULL) {
-                parse_bitrates(session, node);
-            }
+            parse_bitrates(node);
         } else {
             if (strcmp(node->extension, "f4m") == 0) {
                 sprintf(cookie_buf, "Set-Cookie: filename=%s\r\n",
@@ -470,7 +466,7 @@ void handle_client_send(proxy_session *session)
             if (testi == 0) {
                 //TODO update log and throughput
                 if (node->start_time != 0) {
-                    update_throughput(session, node);
+                    update_throughput(node);
                 }
             } else if (testi == -1) {
                 break;

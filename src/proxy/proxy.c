@@ -10,6 +10,7 @@
 char *www_ip = NULL;
 char *fake_ip = NULL;
 double alpha = 0;
+video_bitrates *video = NULL;
 
 long long now()
 {
@@ -114,7 +115,7 @@ void handle_proxy_session(proxy_session *session)
                 break;
             } else if (strstr(node->filename, "-Frag") != NULL &&
                        node->method == GET) {
-                if (session->video == NULL) {
+                if (video == NULL) {
                     fprintf(stderr, "No video info\n");
                     cookie = strstr(node->cookie, "filename=");
                     if (cookie != NULL) {
@@ -138,8 +139,8 @@ void handle_proxy_session(proxy_session *session)
                             return;
                         }
                     }
-                    session->video = create_video();
-                    if (session->video == NULL) {
+                    video = create_video();
+                    if (video == NULL) {
                         session->close = 1;
                         return;
                     }
@@ -149,14 +150,14 @@ void handle_proxy_session(proxy_session *session)
                     sscanf(node->filename, "%dSeg%s", &bitrate, filename);
                     fprintf(stderr, "%d\t%s\n", bitrate, filename);
                     bitrate = 0;
-                    for (i = 0; i < session->video->bitrate_num; i++) {
-                        if (1.5 * session->video->bitrates[i] <=
-								session->video->throughput &&
-                                session->video->bitrates[i] > bitrate) {
-                            bitrate = session->video->bitrates[i];
+                    for (i = 0; i < video->bitrate_num; i++) {
+                        if (1.5 * video->bitrates[i] <=
+								video->throughput &&
+                                video->bitrates[i] > bitrate) {
+                            bitrate = video->bitrates[i];
                         }
                     }
-                    fprintf(stderr, "%d\t%f\n", bitrate, session->video->throughput);
+                    fprintf(stderr, "%d\t%f\n", bitrate, video->throughput);
                     if (bitrate != 0) {
                         line = node->request_msg->head;
                         sprintf(modified_line, "%s%dSeg%s", node->path, bitrate,
@@ -212,23 +213,27 @@ int connect_to_server(connection *conn)
     return 0;
 }
 
-void parse_bitrates(proxy_session *session, transaction_node *node)
+void parse_bitrates(transaction_node *node)
 {
     char *bitrate_tag = NULL;
     int bitrate;
 
+    free(video);
+    video = create_video();
+    if (video == NULL)
+        return;
     if (node->response_msg->body_size <= 0)
         return;
     node->response_msg->body_buf[node->response_msg->body_size-1] = '\0';
     bitrate_tag = node->response_msg->body_buf;
     while ((bitrate_tag = strstr(bitrate_tag, "bitrate=")) != NULL) {
         sscanf(bitrate_tag, "bitrate=\"%d\"", &bitrate);
-        video_add_bitrate(session->video, bitrate);
+        video_add_bitrate(video, bitrate);
         bitrate_tag++;
     }
 }
 
-void update_throughput(proxy_session *session, transaction_node *node)
+void update_throughput(transaction_node *node)
 {
     long long log_now;
     double duration;
@@ -239,9 +244,9 @@ void update_throughput(proxy_session *session, transaction_node *node)
     log_now = now() / 1000000;
     duration = (node->finish_time - node->start_time) / 1000000.0;
     throughput = node->response_msg->body_size * 8 / duration / 1000.0;
-    session->video->throughput = alpha * throughput +
-                                 (1 - alpha) * session->video->throughput;
+    video->throughput = alpha * throughput +
+                                 (1 - alpha) * video->throughput;
     sscanf(node->filename, "%dSeq%s", &bitrate, buf);
     log_log("%lld %f %f %f %d %s %s\n", log_now, duration, throughput,
-            session->video->throughput, bitrate, www_ip, node->filename);
+            video->throughput, bitrate, www_ip, node->filename);
 }

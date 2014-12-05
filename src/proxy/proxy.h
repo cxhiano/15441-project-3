@@ -44,10 +44,10 @@ int connect_to_server(connection *conn);
 /**
  * Parse the f4m xml and get available bitrates
  */
-void parse_bitrates(proxy_session *session, transaction_node *node);
+void parse_bitrates(transaction_node *node);
 /**
  * Log the current request and update throughput
  */
-void update_throughput(proxy_session *session, transaction_node *node);
+void update_throughput(transaction_node *node);
 
 #endif
