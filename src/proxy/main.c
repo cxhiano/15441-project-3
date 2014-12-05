@@ -32,7 +32,7 @@ int main(int argc, char* argv[])
     }
     strcpy(dns_ip, argv[5]);
     dns_port = atoi(argv[6]);
-    if (dns_port < 1 || dns_port > 65535) {
+    if (dns_port < 0 || dns_port > 65535) {
         fprintf(stdout, "Invalid DNS port: %s\n", argv[6]);
         exit(EXIT_FAILURE);
     }
@@ -43,7 +43,7 @@ int main(int argc, char* argv[])
         exit(EXIT_FAILURE);
     }
     listen_port = atoi(argv[3]);
-    if (listen_port < 1 || listen_port > 65535) {
+    if (listen_port < 0 || listen_port > 65535) {
         fprintf(stdout, "Invalid listen port: %s\n", argv[3]);
         exit(EXIT_FAILURE);
     }
