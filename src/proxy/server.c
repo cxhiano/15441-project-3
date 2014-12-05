@@ -474,10 +474,10 @@ void handle_client_send(proxy_session *session)
                 session->close = 1;
                 return;
             }
-        }
-        if (node->close) {
-            session->close = 1;
-            return;
+            if (node->close) {
+                session->close = 1;
+                return;
+            }
         }
         node = transaction_queue_pop(session->queue);
         transaction_node_free(node);
