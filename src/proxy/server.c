@@ -401,7 +401,20 @@ void handle_server_recv(proxy_session *session)
 
     n = connection_recv(session->server_conn);
     if (n == -1) {
-	session->close = 1;
+		fprintf(stderr, "Server connection closed\n");
+		connection_free(session->server_conn);
+		session->server_conn = create_connection(-1);
+		if (session->server_conn == NULL) {
+			session->close = 1;
+			return;
+		}
+        node = session->queue->head;
+		while (node) {
+			if (node->stage == DONE) {
+				node->stage = PROXY;
+			}
+		}
+		handle_proxy_session(session);
         return;
     } else if (n == 0) {
         return;
