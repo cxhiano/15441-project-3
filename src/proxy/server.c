@@ -408,9 +408,7 @@ void handle_server_recv(proxy_session *session)
 			session->close = 1;
 			return;
 		}
-		if (connect_to_server(session->server_conn) == -1) {
-			session->close = 1;
-			return;
+		while (connect_to_server(session->server_conn) == -1) {
 		}
         node = session->queue->head;
 		while (node) {
