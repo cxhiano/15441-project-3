@@ -5,6 +5,7 @@
 #include "log.h"
 #include "proxy.h"
 #include "../utils/mydns.h"
+#include "../utils/net.h"
 
 int main(int argc, char* argv[])
 {
@@ -14,7 +15,7 @@ int main(int argc, char* argv[])
     char dns_ip[32];
     char www_ip[32];
     struct addrinfo *lookup = NULL;
-    struct sockaddr_in *addr;
+    sockaddr_in_t *addr;
 
     /* Parse arguments */
     if (argc < 7) {
@@ -61,7 +62,7 @@ int main(int argc, char* argv[])
         strcpy(www_ip, argv[7]);
     } else {
         if (resolve("video.cs.cmu.edu", SERVER_PORT_STR, NULL, &lookup) == 0) {
-            addr = (struct sockaddr_in *)lookup->ai_addr;
+            addr = (sockaddr_in_t *)lookup->ai_addr;
             strcpy(www_ip, inet_ntoa(addr->sin_addr));
         } else {
             fprintf(stdout, "Cannot resolve video.cs.cmu.edu\n");

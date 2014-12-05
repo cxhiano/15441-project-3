@@ -148,8 +148,8 @@ void handle_proxy_session(proxy_session *session)
                     sscanf(node->filename, "%dSeg%s", &bitrate, filename);
                     bitrate = 0;
                     for (i = 0; i < session->video->bitrate_num; i++) {
-                        if (session->video->bitrates[i] <=
-                                1.5 * session->video->throughput &&
+                        if (1.5 * session->video->bitrates[i] <=
+								session->video->throughput &&
                                 session->video->bitrates[i] > bitrate) {
                             bitrate = session->video->bitrates[i];
                         }

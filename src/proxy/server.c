@@ -408,13 +408,17 @@ void handle_server_recv(proxy_session *session)
 			session->close = 1;
 			return;
 		}
+		if (connect_to_server(session->server_conn) == -1) {
+			session->close = 1;
+			return;
+		}
         node = session->queue->head;
 		while (node) {
 			if (node->stage == DONE) {
 				node->stage = PROXY;
 			}
+			node = node->next;
 		}
-		handle_proxy_session(session);
         return;
     } else if (n == 0) {
         return;
