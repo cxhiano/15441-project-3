@@ -71,6 +71,7 @@ void proxy_initialize(char *new_www_ip, char *new_fake_ip, double new_alpha)
 void handle_proxy_session(proxy_session *session)
 {
     transaction_node *node;
+    transaction_node *temp;
     transaction_node *special_node;
     message_line *line;
     char *cookie;
@@ -78,6 +79,7 @@ void handle_proxy_session(proxy_session *session)
     char filename[MAXLINE];
     int bitrate, i;
 
+    temp = NULL;
     node = session->queue->head;
     while (node) {
         if (node->special) {
@@ -99,10 +101,13 @@ void handle_proxy_session(proxy_session *session)
                     return;
                 }
                 special_node->special = 1;
-                special_node->next = node->next;
-                node->next = special_node;
-                if (session->queue->tail == node) {
-                    session->queue->tail = special_node;
+                if (temp == NULL) {
+                    transaction_queue_insert_head(session->queue,
+                                                  special_node);
+                    temp = special_node;
+                } else {
+                    temp->next = special_node;
+                    special_node->next = node;
                 }
                 special_node->stage = PROXY;
                 line = node->request_msg->head;
@@ -178,6 +183,7 @@ void handle_proxy_session(proxy_session *session)
         }
         if (node->close)
             break;
+        temp = node;
         node = node->next;
     }
 }
