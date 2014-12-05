@@ -84,6 +84,7 @@ void handle_proxy_session(proxy_session *session)
             break;
         }
         if (node->stage == START) {
+            fprintf(stderr, "%s\n", node->filename);
             if (session->server_conn->conn_fd == -1) {
                 if (connect_to_server(session->server_conn) == -1) {
                     session->close = 1;
@@ -138,11 +139,6 @@ void handle_proxy_session(proxy_session *session)
                                                           special_node);
                             return;
                         }
-                    }
-                    video = create_video();
-                    if (video == NULL) {
-                        session->close = 1;
-                        return;
                     }
                     node->start_time = now();
                     node->stage = PROXY;
@@ -229,6 +225,7 @@ void parse_bitrates(transaction_node *node)
     while ((bitrate_tag = strstr(bitrate_tag, "bitrate=")) != NULL) {
         sscanf(bitrate_tag, "bitrate=\"%d\"", &bitrate);
         video_add_bitrate(video, bitrate);
+        fprintf(stderr, "%d ", bitrate);
         bitrate_tag++;
     }
 }
