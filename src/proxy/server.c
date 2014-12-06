@@ -382,7 +382,6 @@ void handle_server_send(proxy_session *session)
             } else if (testi == -1) {
                 //break;
             } else if (testi == -2) {
-                fprintf(stderr, "Worst case error\n");
                 return;
             }
         }
@@ -419,7 +418,6 @@ void handle_server_recv(proxy_session *session)
         return;
     } else {
         while ((msg = connection_read_msg(session->server_conn)) != NULL) {
-            fprintf(stderr, "%s", msg->head->data);
             node = session->queue->head;
             while (node) {
                 if (node->stage == DONE) {
