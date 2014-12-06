@@ -347,6 +347,7 @@ void handle_client_recv(proxy_session *session)
         return;
     } else {
         while ((msg = connection_read_msg(session->client_conn)) != NULL) {
+            fprintf(stderr, "%s", msg->head->data);
             if ((node = create_transaction_from_msg(msg)) == NULL) {
                 message_free(msg);
                 return;
@@ -469,6 +470,7 @@ void handle_client_send(proxy_session *session)
                 return;
             }
             if (node->close) {
+                session->close = 1;
                 return;
             }
         }

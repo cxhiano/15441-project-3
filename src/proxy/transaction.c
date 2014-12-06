@@ -124,6 +124,7 @@ transaction_node *create_transaction_from_msg(message *msg)
 	        sscanf(line->data, "Connection: %s", token);
 	        if (strcmp(token, "close") == 0 || strcmp(token, "Close") == 0) {
 	        	fprintf(stderr, "Client wants to close\n");
+                node->close = 1;
 	        }
 	    } else if (strstr(line->data, "Cookie:") == line->data) {
 	        sscanf(line->data, "Cookie: %[^\r^\n]", node->cookie);
