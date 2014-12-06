@@ -164,7 +164,8 @@ int update_fdset(fd_set* readfds, fd_set* writefds, int listen_sock,
             FD_SET(session->client_conn->conn_fd, writefds);
         if (session->server_conn->conn_fd != -1) {
             FD_SET(session->server_conn->conn_fd, readfds);
-            if (session->queue->head != NULL)
+            if (session->queue->head != NULL &&
+                    session->queue->head->stage == PROXY)
                 FD_SET(session->server_conn->conn_fd, writefds);
         }
         if (session->client_conn->conn_fd > maxfd)
@@ -270,40 +271,9 @@ void run_server(int port)
          *          * see if any connection needs to be deal with */
         session = session_list->head;
         while (session && readynum > 0) {
-            if (FD_ISSET(session->client_conn->conn_fd, &writefds)) {
-                /* If this connection has something to send */
-                readynum--;
-                //TODO send responses
-                handle_client_send(session);
-                /* If close after send, remove the connection */
-                if (session->close) {
-                    temp = session->next;
-                    session_list_remove(session_list, session);
-                    session = temp;
-                    continue;
-                }
-            }
-            if (FD_ISSET(session->server_conn->conn_fd, &writefds)) {
-                readynum--;
-                if (session->close) {
-                    session = session->next;
-                    continue;
-                }
-                handle_server_send(session);
-                if (session->close) {
-                    temp = session->next;
-                    session_list_remove(session_list, session);
-                    session = temp;
-                    continue;
-                }
-            }
             if (FD_ISSET(session->client_conn->conn_fd, &readfds)) {
                 /* If this connection had something to recv */
                 readynum--;
-                if (session->close) {
-                    session = session->next;
-                    continue;
-                }
                 handle_client_recv(session);
                 if (session->close) {
                     temp = session->next;
@@ -314,11 +284,30 @@ void run_server(int port)
             }
             if (FD_ISSET(session->server_conn->conn_fd, &readfds)) {
                 readynum--;
+                handle_server_recv(session);
                 if (session->close) {
-                    session = session->next;
+                    temp = session->next;
+                    session_list_remove(session_list, session);
+                    session = temp;
                     continue;
                 }
-                handle_server_recv(session);
+            }
+            if (FD_ISSET(session->server_conn->conn_fd, &writefds)) {
+                readynum--;
+                handle_server_send(session);
+                if (session->close) {
+                    temp = session->next;
+                    session_list_remove(session_list, session);
+                    session = temp;
+                    continue;
+                }
+            }
+            if (FD_ISSET(session->client_conn->conn_fd, &writefds)) {
+                /* If this connection has something to send */
+                readynum--;
+                //TODO send responses
+                handle_client_send(session);
+                /* If close after send, remove the connection */
                 if (session->close) {
                     temp = session->next;
                     session_list_remove(session_list, session);
@@ -406,6 +395,7 @@ void handle_server_recv(proxy_session *session)
 			return;
 		}
 		while (connect_to_server(session->server_conn) == -1) {
+            fprintf(stderr, "Retry server connection\n");
 		}
         node = session->queue->head;
 		while (node) {
