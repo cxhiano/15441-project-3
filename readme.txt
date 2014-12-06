@@ -18,12 +18,12 @@ src/
     test/
         main.c - Test routines
     proxy/
-        io.[c|h]
-        log.[c|h]
-        message.[c|h]
-        proxy.[c|h]
-        server.[c|h]
-        transaction.[c|h]
-        main.c
+        io.[c|h] - Functions dealing with the underlying socket io.
+        log.[c|h] - Functions that logs output to file.
+        message.[c|h] - Abstraction of http messages.
+        proxy.[c|h] - Implementation of the bit rate adaption proxy.
+        server.[c|h] - Underlying select engine for connections.
+        transaction.[c|h] - Abstraction of http requests and responses.
+        main.c - Executable proxy.
 
 
