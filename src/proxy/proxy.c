@@ -215,7 +215,8 @@ void parse_bitrates(transaction_node *node)
     char *bitrate_tag = NULL;
     int bitrate;
 
-    free(video);
+    if (video != NULL)
+        return;
     video = create_video();
     if (video == NULL)
         return;
