@@ -336,7 +336,7 @@ void handle_client_recv(proxy_session *session)
         return;
     } else {
         while ((msg = connection_read_msg(session->client_conn)) != NULL) {
-            fprintf(stderr, "%s", msg->head->data);
+            fprintf(stderr, "Client recv:%s", msg->head->data);
             if ((node = create_transaction_from_msg(msg)) == NULL) {
                 message_free(msg);
                 return;
@@ -366,6 +366,7 @@ void handle_server_send(proxy_session *session)
     if (node) {
         if (node->stage == PROXY) {
             testi = connection_send_msg(session->server_conn,node->request_msg);
+            fprintf(stderr, "Server send:%s", node->request_msg->head->data);
             if (testi == 0) {
                 node->stage = DONE;
                 //break;
@@ -409,6 +410,15 @@ void handle_server_recv(proxy_session *session)
         return;
     } else {
         while ((msg = connection_read_msg(session->server_conn)) != NULL) {
+            fprintf(stderr, "Server recv:%s", msg->head->data);
+            connection_free(session->server_conn);
+            session->server_conn = create_connection(-1);
+            if (session->server_conn == NULL) {
+                return;
+            }
+            while (connect_to_server(session->server_conn) == -1) {
+                fprintf(stderr, "Retry server connection\n");
+            }
             node = session->queue->head;
             while (node) {
                 if (node->stage == DONE) {
@@ -449,6 +459,7 @@ void handle_client_send(proxy_session *session)
                 }
             }
             testi = connection_send_msg(session->client_conn,node->response_msg);
+            fprintf(stderr, "Client sent:%s", node->response_msg->head->data);
             if (testi == 0) {
                 //TODO update log and throughput
                 if (node->start_time != 0) {
@@ -459,10 +470,12 @@ void handle_client_send(proxy_session *session)
             } else if (testi == -2) {
                 return;
             }
-            if (node->close) {
+            session->close = 1;
+            return;
+            /*if (node->close) {
                 session->close = 1;
                 return;
-            }
+            }*/
         }
         node = transaction_queue_pop(session->queue);
         transaction_node_free(node);

@@ -87,8 +87,7 @@ void handle_proxy_session(proxy_session *session)
         }
         if (node->stage == START) {
             if (session->server_conn->conn_fd == -1) {
-                if (connect_to_server(session->server_conn) == -1) {
-                    return;
+                while (connect_to_server(session->server_conn) == -1) {
                 }
             }
             if (strcmp(node->extension, "f4m") == 0 && !node->special &&
