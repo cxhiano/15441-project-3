@@ -86,7 +86,6 @@ void handle_proxy_session(proxy_session *session)
             break;
         }
         if (node->stage == START) {
-            fprintf(stderr, "%s\n", node->filename);
             if (session->server_conn->conn_fd == -1) {
                 if (connect_to_server(session->server_conn) == -1) {
                     return;
@@ -146,7 +145,6 @@ void handle_proxy_session(proxy_session *session)
                     node->stage = PROXY;
                 } else {
                     sscanf(node->filename, "%dSeg%s", &bitrate, filename);
-                    fprintf(stderr, "%d\t%s\n", bitrate, filename);
                     bitrate = 0;
                     for (i = 0; i < video->bitrate_num; i++) {
                         if (1.5 * video->bitrates[i] <=
@@ -155,7 +153,6 @@ void handle_proxy_session(proxy_session *session)
                             bitrate = video->bitrates[i];
                         }
                     }
-                    fprintf(stderr, "%d\t%f\n", bitrate, video->throughput);
                     if (bitrate != 0) {
                         line = node->request_msg->head;
                         sprintf(modified_line, "%s%dSeg%s", node->path, bitrate,
