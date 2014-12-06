@@ -160,8 +160,7 @@ int update_fdset(fd_set* readfds, fd_set* writefds, int listen_sock,
         }
         FD_SET(session->client_conn->conn_fd, readfds);
         if (session->queue->head != NULL &&
-                session->queue->head->stage == READY &&
-                session->queue->tail->stage == READY)
+                session->queue->head->stage == READY)
             FD_SET(session->client_conn->conn_fd, writefds);
         if (session->server_conn->conn_fd != -1) {
             FD_SET(session->server_conn->conn_fd, readfds);
@@ -349,7 +348,6 @@ void handle_client_recv(proxy_session *session)
         return;
     } else {
         while ((msg = connection_read_msg(session->client_conn)) != NULL) {
-            fprintf(stderr, "%s", msg->head->data);
             if ((node = create_transaction_from_msg(msg)) == NULL) {
                 message_free(msg);
                 return;
@@ -378,7 +376,6 @@ void handle_server_send(proxy_session *session)
     node = session->queue->head;
     if (node) {
         if (node->stage == PROXY) {
-            fprintf(stderr, "%s", node->request_msg->head->data);
             testi = connection_send_msg(session->server_conn,node->request_msg);
             if (testi == 0) {
                 node->stage = DONE;
@@ -386,7 +383,6 @@ void handle_server_send(proxy_session *session)
             } else if (testi == -1) {
                 //break;
             } else if (testi == -2) {
-                fprintf(stderr, "Worst case error\n");
                 return;
             }
         }
@@ -404,19 +400,16 @@ void handle_server_recv(proxy_session *session)
 
     n = connection_recv(session->server_conn);
     if (n == -1) {
-		fprintf(stderr, "Server connection closed\n");
 		connection_free(session->server_conn);
 		session->server_conn = create_connection(-1);
 		if (session->server_conn == NULL) {
 			return;
 		}
 		while (connect_to_server(session->server_conn) == -1) {
-            fprintf(stderr, "Reconnect server\n");
 		}
         node = session->queue->head;
 		while (node) {
 			if (node->stage == DONE) {
-                fprintf(stderr, "re proxy requests\n");
 				node->stage = PROXY;
 			}
 			node = node->next;
@@ -426,7 +419,6 @@ void handle_server_recv(proxy_session *session)
         return;
     } else {
         while ((msg = connection_read_msg(session->server_conn)) != NULL) {
-            fprintf(stderr, "%s", msg->head->data);
             node = session->queue->head;
             while (node) {
                 if (node->stage == DONE) {
@@ -454,7 +446,6 @@ void handle_client_send(proxy_session *session)
 
     node = session->queue->head;
     while (node && node->stage == READY) {
-        fprintf(stderr, "send %s", node->filename);
         if (node->special) {
             parse_bitrates(node);
         } else {
